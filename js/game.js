@@ -5,14 +5,14 @@
 /* ================= constantes ================= */
 const WX = 64, WZ = 64, WY = 30, SEA = 6, CH = 16;
 const SAVE = 'bichos-bloques-3d-v1', MAXP = 3, REACH = 8;
-const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, LOG: 5, LEAVES: 6, PLANKS: 7, BRICK: 8, WATER: 9, TALL: 10, FLOWR: 11, FLOWY: 12, BED: 13 };
+const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, LOG: 5, LEAVES: 6, PLANKS: 7, BRICK: 8, WATER: 9, TALL: 10, FLOWR: 11, FLOWY: 12, BED: 13, GEM: 14 };
 const SOLID = new Uint8Array(16), OPAQUE = new Uint8Array(16), PLANT = new Uint8Array(16);
-[1, 2, 3, 4, 5, 6, 7, 8, 13].forEach(i => SOLID[i] = 1);
-[1, 2, 3, 4, 5, 7, 8, 13].forEach(i => OPAQUE[i] = 1);
+[1, 2, 3, 4, 5, 6, 7, 8, 13, 14].forEach(i => SOLID[i] = 1);
+[1, 2, 3, 4, 5, 7, 8, 13, 14].forEach(i => OPAQUE[i] = 1);
 [10, 11, 12].forEach(i => PLANT[i] = 1);
 // tile del atlas por bloque: [arriba, costado, abajo]
-const TILES = { 1: [0, 1, 2], 2: [2, 2, 2], 3: [3, 3, 3], 4: [4, 4, 4], 5: [6, 5, 6], 6: [7, 7, 7], 7: [8, 8, 8], 8: [9, 9, 9], 10: [11, 11, 11], 11: [12, 12, 12], 12: [13, 13, 13], 13: [14, 14, 14] };
-const BLOCKCOL = { 1: ['#5fae3f', '#8b5a2f'], 2: ['#8b5a2f', '#6a4220'], 3: ['#8f8f8f', '#6c6c6c'], 4: ['#e4cf8e', '#c9b26c'], 5: ['#6b4423', '#a8804a'], 6: ['#3f9636', '#24621f'], 7: ['#b8864a', '#7d5629'], 8: ['#9c9c9c', '#646464'], 10: ['#4a9a32', '#9be36b'], 11: ['#e8443a', '#3f8a2b'], 12: ['#ffd23f', '#3f8a2b'] };
+const TILES = { 1: [0, 1, 2], 2: [2, 2, 2], 3: [3, 3, 3], 4: [4, 4, 4], 5: [6, 5, 6], 6: [7, 7, 7], 7: [8, 8, 8], 8: [9, 9, 9], 10: [11, 11, 11], 11: [12, 12, 12], 12: [13, 13, 13], 13: [14, 14, 14], 14: [15, 15, 15] };
+const BLOCKCOL = { 1: ['#5fae3f', '#8b5a2f'], 2: ['#8b5a2f', '#6a4220'], 3: ['#8f8f8f', '#6c6c6c'], 4: ['#e4cf8e', '#c9b26c'], 5: ['#6b4423', '#a8804a'], 6: ['#3f9636', '#24621f'], 7: ['#b8864a', '#7d5629'], 8: ['#9c9c9c', '#646464'], 10: ['#4a9a32', '#9be36b'], 11: ['#e8443a', '#3f8a2b'], 12: ['#ffd23f', '#3f8a2b'], 14: ['#5ff2f2', '#c48bff'] };
 
 const ITEMS = [
   { id: 'madera', name: 'Madera', tile: 8, block: B.PLANKS },
@@ -34,7 +34,7 @@ const MONS = [
   { id: 'squirtle', n: 7, name: 'Squirtle', w: 20, c: .65, hab: 'agua', rar: 'Común', tip: 'Le gusta estar cerca del agua', col: '#6390f0', emoji: '💧' },
   { id: 'psyduck', n: 54, name: 'Psyduck', w: 12, c: .6, hab: 'agua', rar: 'Común', tip: 'Se rasca la cabeza en la orilla', col: '#f5d76e', emoji: '🦆' },
   { id: 'geodude', n: 74, name: 'Geodude', w: 15, c: .55, hab: 'piedra', rar: 'Común', tip: 'Se esconde cerca de las piedras', col: '#a8a090', emoji: '🪨' },
-  { id: 'butterfree', n: 12, name: 'Butterfree', w: 12, c: .6, hab: 'flor', rar: 'Común', tip: 'Vuela cerca de las flores', col: '#b8a8f0', emoji: '🦋', fly: true },
+  { id: 'butterfree', n: 12, name: 'Butterfree', from: 'metapod', stage: 2, w: 12, c: .6, hab: 'flor', rar: 'Común', tip: 'Vuela cerca de las flores', col: '#b8a8f0', emoji: '🦋', fly: true },
   { id: 'oddish', n: 43, name: 'Oddish', w: 12, c: .6, hab: 'flor', rar: 'Común', tip: 'Se planta al lado de las flores', col: '#5a7fd0', emoji: '🌿' },
   { id: 'caterpie', n: 10, name: 'Caterpie', w: 15, c: .7, hab: 'arbol', rar: 'Común', tip: 'Come hojas debajo de los árboles', col: '#78c850', emoji: '🐛' },
   { id: 'paras', n: 46, name: 'Paras', w: 10, c: .6, hab: 'arbol', rar: 'Común', tip: 'Aparece a la sombra de los árboles', col: '#e07040', emoji: '🍄' },
@@ -42,9 +42,33 @@ const MONS = [
   { id: 'onix', n: 95, name: 'Onix', w: 4, c: .4, hab: 'piedra', rar: 'Raro', tip: 'Gigante de piedra, cerca de las rocas', col: '#9a9a9a', emoji: '🐍', s: 2.3 },
   { id: 'snorlax', n: 143, name: 'Snorlax', w: 3, c: .35, hab: null, rar: 'Raro', tip: 'Duerme la siesta en cualquier lado', col: '#3a6a80', emoji: '😴', s: 2 },
   { id: 'mew', n: 151, name: 'Mew', w: 1.5, c: .25, hab: null, rar: 'Rarísimo', tip: 'Casi nadie lo encontró', col: '#f5a8c8', emoji: '✨', fly: true },
-  { id: 'rayquaza', n: 384, name: 'Rayquaza negro', w: 1, c: .2, hab: null, rar: 'Rarísimo', tip: 'Un dragón variocolor que vuela muy alto', col: '#2a2a2a', emoji: '🐉', fly: true, shiny: true, s: 2.8 }
+  { id: 'rayquaza', n: 384, name: 'Rayquaza negro', w: 1, c: .2, hab: null, rar: 'Rarísimo', tip: 'Dragón variocolor: debilitalo con tus Pokémon antes de tirarle un cubo', col: '#2a2a2a', emoji: '🐉', fly: true, shiny: true, s: 2.8 },
+  // evoluciones: no aparecen sueltas, se consiguen con una gema 💎 (from = de quién evoluciona)
+  { id: 'ivysaur', n: 2, name: 'Ivysaur', from: 'bulbasaur', stage: 1, col: '#5fbf8f', emoji: '🌿', s: 1.7 },
+  { id: 'venusaur', n: 3, name: 'Venusaur', from: 'ivysaur', stage: 2, col: '#4fa07a', emoji: '🌺', s: 2.1 },
+  { id: 'charmeleon', n: 5, name: 'Charmeleon', from: 'charmander', stage: 1, col: '#e0603a', emoji: '🔥', s: 1.7 },
+  { id: 'charizard', n: 6, name: 'Charizard', from: 'charmeleon', stage: 2, col: '#f08030', emoji: '🐲', s: 2.2, fly: true },
+  { id: 'wartortle', n: 8, name: 'Wartortle', from: 'squirtle', stage: 1, col: '#6390f0', emoji: '💧', s: 1.7 },
+  { id: 'blastoise', n: 9, name: 'Blastoise', from: 'wartortle', stage: 2, col: '#4a6fc0', emoji: '🌊', s: 2.1 },
+  { id: 'metapod', n: 11, name: 'Metapod', from: 'caterpie', stage: 1, col: '#78c850', emoji: '🟢', s: 1.4 },
+  { id: 'raichu', n: 26, name: 'Raichu', from: 'pikachu', stage: 1, col: '#e8a030', emoji: '⚡', s: 1.8 },
+  { id: 'gloom', n: 44, name: 'Gloom', from: 'oddish', stage: 1, col: '#5a7fd0', emoji: '🌸', s: 1.6 },
+  { id: 'vileplume', n: 45, name: 'Vileplume', from: 'gloom', stage: 2, col: '#d04040', emoji: '🌺', s: 1.9 },
+  { id: 'parasect', n: 47, name: 'Parasect', from: 'paras', stage: 1, col: '#e07040', emoji: '🍄', s: 1.8 },
+  { id: 'golduck', n: 55, name: 'Golduck', from: 'psyduck', stage: 1, col: '#4a8ad0', emoji: '🦆', s: 1.9 },
+  { id: 'graveler', n: 75, name: 'Graveler', from: 'geodude', stage: 1, col: '#a8a090', emoji: '🪨', s: 1.7 },
+  { id: 'golem', n: 76, name: 'Golem', from: 'graveler', stage: 2, col: '#8a8a70', emoji: '🪨', s: 2 },
+  { id: 'vaporeon', n: 134, name: 'Vaporeon', from: 'eevee', stage: 1, col: '#4a9ae0', emoji: '💧', s: 1.8 },
+  { id: 'jolteon', n: 135, name: 'Jolteon', from: 'eevee', stage: 1, col: '#f0d040', emoji: '⚡', s: 1.8 },
+  { id: 'flareon', n: 136, name: 'Flareon', from: 'eevee', stage: 1, col: '#f08040', emoji: '🔥', s: 1.8 },
+  { id: 'steelix', n: 208, name: 'Steelix', from: 'onix', stage: 1, col: '#9aa8b8', emoji: '⚙️', s: 2.6 }
 ];
 const MON = Object.fromEntries(MONS.map(m => [m.id, m]));
+const EVO = {}; // a quién puede evolucionar cada uno
+MONS.forEach(m => {
+  if (m.w === undefined) Object.assign(m, { w: 0, c: .5, hab: null, rar: 'Evolución', tip: 'Evoluciona de ' + MON[m.from].name + ' con una gema 💎' });
+  if (m.from) (EVO[m.from] = EVO[m.from] || []).push(m.id);
+});
 // partidas guardadas con los bichos viejos: se pasan a su Pokémon parecido
 const OLDMON = { brotito: 'bulbasaur', gotin: 'squirtle', piedron: 'geodude', zumbi: 'butterfree', hongui: 'paras', nubi: 'eevee', velin: 'charmander', cristalin: 'mew' };
 const SPR = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
@@ -106,6 +130,10 @@ const atlas = document.createElement('canvas'); atlas.width = atlas.height = 64;
   tile(12, 13, () => flower('#e8443a', '#ffd23f'));
   tile(13, 14, () => flower('#ffd23f', '#f08a1a'));
   tile(14, 15, r => speck(r, '#3a3a3a', ['#222', '#555', '#2c2c2c'], 140));
+  // piedra con gemas de evolución
+  tile(15, 16, r => { speck(r, '#8f8f8f', ['#7a7a7a', '#a5a5a5', '#6c6c6c'], 120);
+    [[2, 2, '#5ff2f2'], [9, 3, '#c48bff'], [5, 8, '#ff7ad9'], [11, 10, '#5ff2f2'], [2, 12, '#c48bff']].forEach(([x, y, c]) => {
+      g.fillStyle = '#2a2a4a'; g.fillRect(x - 1, y - 1, 5, 5); g.fillStyle = c; g.fillRect(x, y, 3, 3); g.fillStyle = '#ffffff'; g.fillRect(x, y, 1, 1); }); });
 })();
 const tileCanvas = i => { const c = document.createElement('canvas'); c.width = c.height = 16; c.getContext('2d').drawImage(atlas, (i % 4) * 16, (i >> 2) * 16, 16, 16, 0, 0, 16, 16); return c; };
 
@@ -214,6 +242,13 @@ function generate(sd) {
     } else if (n4(x, z) > .58 && r() < .8) set(x, h + 1, z, B.TALL);
     else if (r() < .04) set(x, h + 1, z, r() < .5 ? B.FLOWR : B.FLOWY);
     else if (n3(x, z) > .8 && r() < .05) set(x, h + 1, z, B.STONE);
+  }
+  // gemas de evolución escondidas en la piedra (más fáciles de ver en las piedras de afuera)
+  const rg = rng32(sd ^ 0x5eed6e5);
+  for (let y = 1; y < WY - 1; y++) for (let z = 1; z < WZ - 1; z++) for (let x = 1; x < WX - 1; x++) {
+    if (world[idx(x, y, z)] !== B.STONE) continue;
+    const open = get(x, y + 1, z) === B.AIR || get(x + 1, y, z) === B.AIR || get(x - 1, y, z) === B.AIR || get(x, y, z + 1) === B.AIR || get(x, y, z - 1) === B.AIR;
+    if (rg() < (open ? .016 : .004)) set(x, y, z, B.GEM);
   }
 }
 function surfaceY(x, z) { // altura de los pies sobre suelo sólido; null si es agua
@@ -404,13 +439,13 @@ function moveBody(b, dt) {
 const newBody = (hw, h) => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), hw, h, ground: false, autoJump: true, jumpV: 8.6, inWater: false, hit: false });
 
 /* ================= estado del juego ================= */
-let inv, cubes, dex, party, sel = 0, mode = 'break', running = false;
+let inv, cubes, gems = 0, dex, party, sel = 0, mode = 'break', running = false;
 const player = { body: newBody(.3, 1.7), model: makePlayer(), yaw: 0, phase: 0 };
 scene.add(player.model); player.shadow = makeShadow(.9);
 let camYaw = Math.PI * .75, camPitch = .42, camDist = 7, camDistCur = 7;
 const followers = [], wild = [];
 
-function freshState() { inv = { madera: 2, piedra: 2, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }; cubes = 5; dex = {}; party = []; edits = {}; }
+function freshState() { inv = { madera: 2, piedra: 2, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }; cubes = 5; gems = 0; dex = {}; party = []; edits = {}; }
 function findSpawn() {
   for (let rad = 0; rad < 30; rad++) for (let k = 0; k < 40; k++) {
     const a = k / 40 * Math.PI * 2, x = Math.floor(WX / 2 + Math.cos(a) * rad), z = Math.floor(WZ / 2 + Math.sin(a) * rad);
@@ -426,7 +461,7 @@ function newWorld() {
   player.body.p.set(x + .5, y, z + .5); player.body.v.set(0, 0, 0);
 }
 function save() {
-  try { localStorage.setItem(SAVE, JSON.stringify({ seed, edits, p: player.body.p.toArray(), inv, cubes, dex, party })); } catch (e) { }
+  try { localStorage.setItem(SAVE, JSON.stringify({ seed, edits, p: player.body.p.toArray(), inv, cubes, gems, dex, party })); } catch (e) { }
 }
 let saveT = null; function saveSoon() { clearTimeout(saveT); saveT = setTimeout(save, 600); }
 function load() {
@@ -434,7 +469,7 @@ function load() {
     const s = JSON.parse(localStorage.getItem(SAVE)); if (!s || !s.seed) return false;
     seed = s.seed; generate(seed); edits = s.edits || {};
     for (const k in edits) world[+k] = edits[k];
-    inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; dex = {};
+    inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; gems = s.gems | 0; dex = {};
     for (const k in s.dex || {}) { const id = MON[k] ? k : OLDMON[k]; if (id) dex[id] = (dex[id] || 0) + s.dex[k]; }
     party = [...new Set((s.party || []).map(id => MON[id] ? id : OLDMON[id]))].filter(id => dex[id] && MON[id]).slice(0, MAXP);
     player.body.p.fromArray(s.p); if (collides(player.body, player.body.p.x, player.body.p.y, player.body.p.z)) { const [x, y, z] = findSpawn(); player.body.p.set(x + .5, y, z + .5); }
@@ -447,6 +482,7 @@ function setBlock(x, y, z, v) { set(x, y, z, v); edits[idx(x, y, z)] = v; rebuil
 function makeCreature(id, x, y, z) {
   const m = MON[id], c = { id, mon: m, model: makeMon(id), body: newBody(.28, .75), t: Math.random() * 3, dir: new THREE.Vector3(), yaw: Math.random() * 6, hop: 0, state: 'wander', alive: true };
   c.body.p.set(x, y, z); c.body.fly = !!m.fly; c.home = new THREE.Vector3(x, y, z); c.body.jumpV = 7.5;
+  c.hp = 1; c.hitAgo = 99;
   c.model.userData.creature = c; c.model.traverse(o => { o.userData.creature = c; });
   c.model.position.copy(c.body.p); scene.add(c.model); c.shadow = makeShadow(.8);
   return c;
@@ -505,8 +541,25 @@ function steer(c, dirx, dirz, speed, dt) {
   c.body.v.x += (dirx * speed - c.body.v.x) * k; c.body.v.z += (dirz * speed - c.body.v.z) * k;
   if (Math.abs(dirx) + Math.abs(dirz) > .01) c.targetYaw = Math.atan2(dirx, dirz);
 }
+// barra de vida arriba de los Pokémon salvajes (aparece cuando los atacás, o siempre en los raros)
+function drawHp(c) {
+  if (!c.hpBar) {
+    const cv = document.createElement('canvas'); cv.width = 64; cv.height = 10;
+    const tex = new THREE.CanvasTexture(cv); tex.magFilter = tex.minFilter = THREE.NearestFilter;
+    c.hpBar = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+    c.hpBar.scale.set(1, .16, 1); c.hpBar.position.y = (c.mon.s || 1.5) * .78 + .25; c.hpBar.renderOrder = 5; c.hpBar.userData.cv = cv;
+    c.model.add(c.hpBar);
+  }
+  const cv = c.hpBar.userData.cv, g = cv.getContext('2d');
+  g.fillStyle = '#111'; g.fillRect(0, 0, 64, 10); g.fillStyle = '#444'; g.fillRect(2, 2, 60, 6);
+  g.fillStyle = c.hp > .5 ? '#5fd35f' : c.hp > .2 ? '#f2c233' : '#f04a3a'; g.fillRect(2, 2, Math.max(2, Math.round(60 * c.hp)), 6);
+  c.hpBar.material.map.needsUpdate = true;
+}
 function updateWild(c, dt, now) {
   if (c.state === 'caught') return;
+  c.hitAgo += dt;
+  if (c.hp < 1 && c.hitAgo > 10) { c.hp = Math.min(1, c.hp + dt * .03); drawHp(c); } // se recupera solo si lo dejás tranquilo
+  if (c.mon.rar !== 'Común' && !c.hpBar) drawHp(c);
   const p = player.body.p;
   c.t -= dt;
   let speed = 1.2;
@@ -583,6 +636,7 @@ let catching = null;
 function throwAt(c) {
   if (catching) return;
   if (cubes < 1) { toast('No te quedan cubos. Tocá "Hacer cubo" (1 madera + 1 piedra).', 3000); beep(120, .15); return; }
+  if (c.mon.rar === 'Rarísimo' && c.hp > .6 && !c.warned) { c.warned = true; toast(c.mon.name + ' es muy fuerte. ' + (followers.length ? 'Primero atacalo con tus Pokémon (botón ¡Ataque!).' : 'Conseguí Pokémon que te sigan para debilitarlo.'), 3500); beep(200, .15); return; }
   cubes--; updateUI();
   const cube = makeCube(); scene.add(cube);
   const from = player.body.p.clone().add(new THREE.Vector3(0, 1.3, 0));
@@ -617,7 +671,8 @@ function resolveCatch() {
   const k = catching, c = k.c, m = c.mon;
   scene.remove(k.cube);
   const at = k.cube.position.clone();
-  if (Math.random() < m.c) {
+  const chance = m.c + (1 - m.c) * (1 - c.hp) * .85; // más débil = más fácil de atrapar
+  if (Math.random() < chance) {
     dex[c.id] = (dex[c.id] || 0) + 1; const first = dex[c.id] === 1;
     removeCreature(c); wild.splice(wild.indexOf(c), 1);
     stars(at); [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, .15), i * 110));
@@ -630,10 +685,48 @@ function resolveCatch() {
   } else {
     c.model.visible = true; c.model.scale.setScalar(1); c.body.p.copy(at).setY(at.y - .2);
     stars(at, '#bbbbbb'); beep(160, .25, 'sawtooth');
-    if (Math.random() < .25) { c.state = 'flee'; c.t = 3; toast(m.name + ' salió del cubo y se fue corriendo.', 2500); }
-    else { c.state = 'emerge'; c.t = .6; toast('¡Uy! ' + m.name + ' se escapó. Probá otra vez.', 2500); }
+    if (Math.random() < (c.hp < .5 ? .08 : .25)) { c.state = 'flee'; c.t = 3; toast(m.name + ' salió del cubo y se fue corriendo.', 2500); }
+    else { c.state = 'emerge'; c.t = .6; toast('¡Uy! ' + m.name + ' se escapó. ' + (c.hp > .5 && followers.length ? 'Atacalo para debilitarlo.' : 'Probá otra vez.'), 2500); }
   }
   catching = null; updateUI(); save();
+}
+
+/* ================= atacar para debilitar ================= */
+let atkCD = 0;
+function attackTarget() {
+  // el más cercano, pero prefiere al que ya venías atacando y a los raros
+  let best = null, bs = Infinity;
+  wild.forEach(c => {
+    if (!c.alive || c.state === 'caught' || c.state === 'flee') return;
+    const d = c.body.p.distanceTo(player.body.p); if (d > 12) return;
+    const sc = d - (c.hitAgo < 10 ? 8 : 0) - (c.mon.rar === 'Rarísimo' ? 6 : c.mon.rar === 'Raro' ? 3 : 0);
+    if (sc < bs) { bs = sc; best = c; }
+  });
+  return best;
+}
+function attack() {
+  if (!running || catching || atkCD > 0) return;
+  if (!followers.length) { toast('Necesitás Pokémon que te sigan para atacar.'); beep(120, .1); return; }
+  const t = attackTarget(); if (!t) { toast('No hay ningún Pokémon salvaje cerca.'); beep(120, .1); return; }
+  atkCD = 1.1;
+  player.yaw = Math.atan2(t.body.p.x - player.body.p.x, t.body.p.z - player.body.p.z);
+  followers.forEach((f, i) => setTimeout(() => beam(f, t), i * 200));
+}
+function beam(f, t) {
+  if (!t.alive || t.state === 'caught' || !followers.includes(f)) return;
+  const a = f.body.p.clone().add(new THREE.Vector3(0, .6, 0)), b = t.body.p.clone().add(new THREE.Vector3(0, .5, 0));
+  f.targetYaw = Math.atan2(b.x - a.x, b.z - a.z); if (f.body.ground) f.body.v.y = 4;
+  const dir = b.clone().sub(a);
+  for (let i = 0; i < 12; i++) particle(a.clone().addScaledVector(dir, i / 24), dir.clone().multiplyScalar(2.6 + Math.random()), i % 3 ? f.mon.col : '#ffffff', .14, .3, 0);
+  beep(300 + Math.random() * 200, .08, 'sawtooth', .04);
+  setTimeout(() => {
+    if (!t.alive || t.state === 'caught') return;
+    const resist = t.mon.rar === 'Rarísimo' ? .5 : t.mon.rar === 'Raro' ? .8 : 1;
+    t.hp = Math.max(.08, t.hp - (.14 + .06 * (f.mon.stage || 0)) * resist); t.hitAgo = 0;
+    drawHp(t); stars(b, f.mon.col); beep(150, .1, 'square', .05);
+    if (t.state === 'wander') { t.state = 'emerge'; t.t = .7; } t.targetYaw = Math.atan2(player.body.p.x - t.body.p.x, player.body.p.z - t.body.p.z);
+    if (t.hp <= .08 && !t.weakMsg) { t.weakMsg = true; toast('¡' + t.mon.name + ' está muy débil! Tirale un cubo.', 3000); }
+  }, 300);
 }
 
 /* ================= tocar el mundo ================= */
@@ -677,6 +770,7 @@ function breakBlock(h) {
   if (h.v === B.BED) { toast('Esa roca no se rompe.'); beep(120, .12); return; }
   const drop = DROP[h.v];
   burst(h.x, h.y, h.z, h.v);
+  if (h.v === B.GEM) { gems++; stars(new THREE.Vector3(h.x + .5, h.y + .5, h.z + .5), '#5ff2f2'); [988, 1319, 1568].forEach((f, i) => setTimeout(() => beep(f, .1, 'triangle'), i * 80)); toast('¡Encontraste una gema de evolución! 💎 Usala en la Pokédex.', 2600); }
   setBlock(h.x, h.y, h.z, h.y <= SEA ? B.WATER : B.AIR);
   if (PLANT[get(h.x, h.y + 1, h.z)]) setBlock(h.x, h.y + 1, h.z, B.AIR);
   if (drop) { inv[drop]++; toast('+1 ' + ITEMS.find(i => i.id === drop).name, 900); }
@@ -717,10 +811,11 @@ ITEMS.forEach((it, i) => {
 function setMode(m) { mode = m; const b = $('modeBtn'); b.textContent = m === 'break' ? 'Romper' : 'Poner'; b.classList.toggle('place', m === 'place'); }
 function updateUI() {
   [...hot.children].forEach((b, i) => { const n = inv[ITEMS[i].id]; b.querySelector('b').textContent = n || ''; b.classList.toggle('sel', i === sel && mode === 'place'); b.classList.toggle('empty', !n); });
-  $('cubeCount').textContent = cubes; $('dexCount').textContent = MONS.filter(m => dex[m.id]).length + '/' + MONS.length;
+  $('cubeCount').textContent = cubes; $('gemCount').textContent = gems; $('dexCount').textContent = MONS.filter(m => dex[m.id]).length + '/' + MONS.length;
 }
 $('modeBtn').addEventListener('click', () => { setMode(mode === 'break' ? 'place' : 'break'); updateUI(); beep(400, .05); });
 $('craftBtn').addEventListener('click', craft);
+$('atkBtn').addEventListener('click', attack);
 let jumpHeld = false;
 const jb = $('jumpBtn');
 jb.addEventListener('pointerdown', e => { e.preventDefault(); jumpHeld = true; doJump(); });
@@ -729,26 +824,43 @@ function doJump() { const b = player.body; if (b.ground) { b.v.y = b.jumpV; b.gr
 
 // cartel de "¡Pokémon nuevo!" con la imagen grande
 let newOpen = false;
-function showNew(m, follows) {
+function showNew(m, follows, evoFrom) {
   if (!$('title').hidden || !$('dexOv').hidden) return;
+  $('newTop').textContent = evoFrom ? '¡' + evoFrom.name + ' evolucionó!' : '¡Pokémon nuevo!';
   running = false; newOpen = true;
   $('newArt').innerHTML = monImg(m, true);
   $('newName').textContent = m.name;
   $('newNum').textContent = 'N.º ' + String(m.n).padStart(3, '0') + (m.shiny ? ' · variocolor' : '');
   const all = MONS.every(mm => dex[mm.id]);
-  $('newMsg').textContent = all ? '¡Completaste la Pokédex! Sos un gran entrenador.' : follows ? 'Ahora te sigue a todos lados.' : 'Ya está en tu Pokédex.';
+  $('newMsg').textContent = all ? '¡Completaste la Pokédex! Sos un gran entrenador.' : evoFrom ? (follows ? 'Ahora es más fuerte para atacar.' : 'Ya está en tu Pokédex.') : follows ? 'Ahora te sigue a todos lados.' : 'Ya está en tu Pokédex.';
   $('newOv').hidden = false;
   [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => beep(f, .12, 'triangle'), i * 120));
 }
 $('newClose').addEventListener('click', () => { $('newOv').hidden = true; newOpen = false; running = true; last = performance.now(); });
 
+function evolve(fromId, toId) {
+  if (gems < 1) { $('dexSum').textContent = 'Necesitás una gema 💎. Buscalas en las piedras brillantes y rompelas.'; beep(120, .1); return; }
+  gems--; dex[toId] = (dex[toId] || 0) + 1;
+  const i = party.indexOf(fromId), follows = i >= 0;
+  if (follows) { party[i] = toId; rebuildFollowers(); }
+  save(); updateUI();
+  $('dexOv').hidden = true;
+  const m = MON[toId]; showNew(m, follows, MON[fromId]);
+  const p = (followers[i] || player).body.p; stars(p.clone().add(new THREE.Vector3(0, .5, 0)), m.col); stars(p.clone().add(new THREE.Vector3(0, .8, 0)), '#ffffff');
+}
 let resetArm = false;
 function renderDex() {
   const grid = $('dexGrid'); grid.innerHTML = '';
-  MONS.forEach(m => {
-    const got = dex[m.id] || 0, f = party.includes(m.id), d = document.createElement('button');
-    d.className = 'mon' + (got ? ' got' : '') + (f ? ' follow' : ''); d.disabled = !got;
+  [...MONS].sort((a, b) => a.n - b.n).forEach(m => {
+    const got = dex[m.id] || 0, f = party.includes(m.id), d = document.createElement('div');
+    d.className = 'mon' + (got ? ' got' : '') + (f ? ' follow' : ''); if (got) { d.setAttribute('role', 'button'); d.tabIndex = 0; }
     d.innerHTML = (f ? '<span class="tag">Te sigue</span>' : '') + monImg(m, false) + '<em>N.º ' + String(m.n).padStart(3, '0') + '</em><strong>' + (got ? m.name : '???') + '</strong><span class="rar" style="color:' + (m.rar === 'Común' ? 'var(--muted)' : 'var(--accent)') + '">' + m.rar + '</span><span>' + (got ? 'Atrapados: ' + got : m.tip) + '</span>';
+    if (got && EVO[m.id]) EVO[m.id].forEach(to => {
+      const eb = document.createElement('button'); eb.className = 'evo' + (gems < 1 ? ' off' : '');
+      eb.textContent = 'Evolucionar a ' + MON[to].name + ' · 💎1';
+      eb.addEventListener('click', e => { e.stopPropagation(); evolve(m.id, to); });
+      d.appendChild(eb);
+    });
     if (got) d.addEventListener('click', () => {
       if (f) party = party.filter(id => id !== m.id);
       else if (party.length >= MAXP) { $('dexSum').textContent = 'Solo pueden seguirte ' + MAXP + ' a la vez. Tocá uno que te sigue para que descanse.'; beep(120, .1); return; }
@@ -758,7 +870,7 @@ function renderDex() {
     grid.appendChild(d);
   });
   const n = MONS.filter(m => dex[m.id]).length;
-  $('dexSum').textContent = (n === MONS.length ? '¡Los encontraste a todos! ' : 'Encontraste ' + n + ' de ' + MONS.length + '. ') + (n ? 'Tocá un Pokémon para que te siga (hasta ' + MAXP + ').' : 'Buscalos caminando por la isla.');
+  $('dexSum').textContent = (n === MONS.length ? '¡Los encontraste a todos! ' : 'Encontraste ' + n + ' de ' + MONS.length + '. ') + (n ? 'Tocá un Pokémon para que te siga (hasta ' + MAXP + ').' : 'Buscalos caminando por la isla.') + ' Gemas: ' + gems + ' 💎';
 }
 $('bookBtn').addEventListener('click', () => { if (!running || newOpen) return; running = false; resetArm = false; $('resetBtn').textContent = 'Mundo nuevo'; renderDex(); $('dexOv').hidden = false; });
 $('dexClose').addEventListener('click', () => { $('dexOv').hidden = true; running = true; last = performance.now(); });
@@ -810,6 +922,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Space') { e.preventDefault(); doJump(); }
   else if (e.code === 'KeyR' || e.code === 'Tab') { e.preventDefault(); setMode(mode === 'break' ? 'place' : 'break'); updateUI(); }
   else if (e.code === 'KeyC') craft();
+  else if (e.code === 'KeyF') attack();
   else if (e.code === 'KeyL' || e.code === 'KeyP') $('bookBtn').click();
   else if (/^Digit[1-7]$/.test(e.code)) { sel = +e.code.slice(5) - 1; setMode('place'); updateUI(); toast(ITEMS[sel].name, 900); }
   if (e.code.startsWith('Arrow')) e.preventDefault();
@@ -867,13 +980,15 @@ function updateCamera(dt) {
   if (camera.position.y < SEA + 1.2) camera.position.y = SEA + 1.2;
   camera.lookAt(camTarget);
 }
-let last = performance.now(), spawnT = 0;
+let last = performance.now(), spawnT = 0, atkUiT = 0;
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (running) {
     updatePlayer(dt, now);
     followers.forEach((c, i) => updateFollower(c, i, dt, now));
     for (let i = wild.length - 1; i >= 0; i--) { const c = wild[i]; if (!c.alive) { wild.splice(i, 1); continue; } updateWild(c, dt, now); if (c.alive && c.state !== 'caught' && c.body.p.distanceTo(player.body.p) > 42) { removeCreature(c); wild.splice(i, 1); } }
+    if (atkCD > 0) atkCD -= dt;
+    if ((atkUiT -= dt) <= 0) { atkUiT = .25; const show = followers.length > 0 && !!attackTarget(); if ($('atkBtn').hidden === show) $('atkBtn').hidden = !show; }
     spawnT -= dt; if (spawnT <= 0) { spawnT = 1.2; if (wild.filter(c => c.alive).length < 12) spawnWild(); }
     updateCatch(dt);
     updateParticles(dt);
@@ -886,6 +1001,24 @@ function frame(now) {
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
+
+/* ================= pantalla completa y horizontal (celular) ================= */
+const TOUCH = matchMedia('(pointer:coarse)').matches;
+const canFull = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+function goFull() {
+  if (!TOUCH) return;
+  try {
+    const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+    const lock = () => { try { screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { }); } catch (e) { } };
+    if (req && !(document.fullscreenElement || document.webkitFullscreenElement)) { const r = req.call(el, { navigationUI: 'hide' }); if (r && r.then) r.then(lock).catch(() => { }); else lock(); }
+    else lock();
+  } catch (e) { }
+}
+if (TOUCH && canFull) $('fullBtn').hidden = false;
+$('fullBtn').addEventListener('click', goFull);
+// si el celular está parado, pedir que lo giren
+function checkTurn() { $('turnOv').hidden = !(TOUCH && $('title').hidden && innerHeight > innerWidth); }
+addEventListener('resize', checkTurn); addEventListener('orientationchange', () => setTimeout(checkTurn, 300));
 
 /* ================= arranque ================= */
 resize();
@@ -901,8 +1034,8 @@ let hadSave = false; try { hadSave = !!localStorage.getItem(SAVE); } catch (e) {
 $('loadMsg').textContent = hadSave ? 'Tu isla te está esperando.' : 'Una isla nueva te está esperando.';
 $('playBtn').addEventListener('click', () => {
   beep(523, .08); setTimeout(() => beep(784, .12), 90);
-  try { const el = document.documentElement; if (el.requestFullscreen && matchMedia('(pointer:coarse)').matches) el.requestFullscreen().catch(() => { }); } catch (e) { }
-  $('title').hidden = true; running = true; last = performance.now();
+  goFull();
+  $('title').hidden = true; running = true; last = performance.now(); checkTurn();
   toast(Object.keys(dex).length ? '¡Bienvenido de vuelta!' : 'Buscá Pokémon en el pasto alto y tocalos para atraparlos', 3500);
   save();
 });

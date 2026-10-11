@@ -43,11 +43,13 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
 #joy{position:fixed;left:calc(var(--sl) + 18px);bottom:calc(var(--sb) + 74px);width:128px;height:128px;border-radius:50%;background:rgba(12,18,15,.35);border:3px solid var(--line)}
 #knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(246,243,230,.85);border:3px solid rgba(0,0,0,.35);pointer-events:none}
-.right{position:fixed;right:calc(var(--sr) + 16px);bottom:calc(var(--sb) + 74px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;gap:8px;align-items:end;justify-items:end}
-#jumpBtn{grid-column:2;grid-row:1 / span 2;width:86px;height:86px;border-radius:50%;font-size:15px;background:rgba(246,243,230,.2)}
-#modeBtn{grid-column:1;grid-row:1;width:92px;height:52px;font-size:15px;background:var(--accent);color:var(--accent-ink);border-color:#a86f10}
+.right{position:fixed;right:calc(var(--sr) + 16px);bottom:calc(var(--sb) + 74px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto auto;gap:8px;align-items:end;justify-items:end}
+#atkBtn{grid-column:2;grid-row:1;width:86px;height:56px;font-size:16px;background:#e0483a;border-color:#8a2018;color:#fff;text-shadow:1px 1px 0 #000}
+#fullBtn{padding:8px 12px;font-size:18px}
+#jumpBtn{grid-column:2;grid-row:2 / span 2;width:86px;height:86px;border-radius:50%;font-size:15px;background:rgba(246,243,230,.2)}
+#modeBtn{grid-column:1;grid-row:2;width:92px;height:52px;font-size:15px;background:var(--accent);color:var(--accent-ink);border-color:#a86f10}
 #modeBtn.place{background:var(--place);color:var(--place-ink);border-color:#1d5f99}
-#craftBtn{grid-column:1;grid-row:2;width:92px;height:52px;font-size:14px;line-height:1.05}
+#craftBtn{grid-column:1;grid-row:3;width:92px;height:52px;font-size:14px;line-height:1.05}
 
 .hot{position:fixed;left:50%;bottom:calc(var(--sb) + 10px);transform:translateX(-50%);display:flex;gap:3px;padding:3px;background:rgba(0,0,0,.4)}
 .slot{position:relative;width:44px;height:44px;padding:0;border:3px solid rgba(255,255,255,.2);border-bottom-width:3px;background:rgba(20,26,22,.7);display:flex;align-items:center;justify-content:center}
@@ -98,7 +100,12 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 @keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
 .mon strong{font-family:var(--display);font-size:17px;font-weight:500}
 .mon span{font-size:12px;color:var(--muted);font-weight:700}
-.mon.got{border-color:var(--good)}
+.mon.got{border-color:var(--good);cursor:pointer}
+.evo{margin-top:4px;width:100%;padding:5px 4px;font-size:12px;line-height:1.15;background:#3a2f5a;border-color:#7a5ac8;border-bottom-width:4px}
+.evo.off{opacity:.55}
+#turnOv{z-index:40;flex-direction:column;gap:14px;font-family:var(--display);font-size:24px;text-align:center}
+#turnOv .ph{font-size:64px;animation:turn 1.6s ease-in-out infinite}
+@keyframes turn{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
 .mon.follow{border-color:var(--accent);background:#2c2a1a}
 .mon .tag{position:absolute;top:4px;right:4px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:900;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em}
 .rar{font-size:10px!important;letter-spacing:.08em;text-transform:uppercase;font-weight:900!important}
@@ -122,14 +129,16 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 <div class="top">
   <div class="chips">
     <div class="chip" title="Cubos atrapadores"><i></i><span id="cubeCount">5</span></div>
-    <div class="chip" title="Pokémon encontrados"><span class="dot"></span><span id="dexCount">0/15</span></div>
+    <div class="chip" title="Gemas de evolución">💎<span id="gemCount">0</span></div>
+    <div class="chip" title="Pokémon encontrados"><span class="dot"></span><span id="dexCount">0/33</span></div>
   </div>
-  <button id="bookBtn">Pokédex</button>
+  <div class="row" style="pointer-events:auto;flex-wrap:nowrap"><button id="fullBtn" hidden aria-label="Pantalla completa">⛶</button><button id="bookBtn">Pokédex</button></div>
 </div>
 <div class="toast off" id="toast"></div>
 
 <div id="joy"><div id="knob"></div></div>
 <div class="right">
+  <button id="atkBtn" hidden>¡Ataque!</button>
   <button id="modeBtn">Romper</button>
   <button id="craftBtn">Hacer<br>cubo</button>
   <button id="jumpBtn">Saltar</button>
@@ -140,7 +149,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <kbd>Espacio</kbd> saltar · <kbd>Q</kbd><kbd>E</kbd> girar<br>
   Arrastrá el mouse: mirar · Ruedita: zoom<br>
   Clic: romper / atrapar · Clic derecho: poner<br>
-  <kbd>1</kbd>–<kbd>7</kbd> bloque · <kbd>C</kbd> hacer cubo · <kbd>P</kbd> Pokédex
+  <kbd>F</kbd> atacar · <kbd>1</kbd>–<kbd>7</kbd> bloque · <kbd>C</kbd> cubo · <kbd>P</kbd> Pokédex
 </div>
 
 <div class="overlay" id="dexOv" hidden>
@@ -157,13 +166,18 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
 <div class="overlay" id="newOv" hidden>
   <div class="card">
-    <p class="newTop">¡Pokémon nuevo!</p>
+    <p class="newTop" id="newTop">¡Pokémon nuevo!</p>
     <div id="newArt"></div>
     <h2 id="newName"></h2>
     <p id="newNum"></p>
     <p id="newMsg"></p>
     <button class="btn primary" id="newClose">¡Genial!</button>
   </div>
+</div>
+
+<div class="overlay" id="turnOv" hidden>
+  <div class="ph">📱</div>
+  <div>Girá el celular para jugar</div>
 </div>
 
 <div class="overlay" id="title">
@@ -186,6 +200,6 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 </div>
 
 <script src="js/three.min.js"></script>
-<script src="js/game.js?v=3"></script>
+<script src="js/game.js?v=4"></script>
 </body>
 </html>
