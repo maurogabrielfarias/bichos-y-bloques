@@ -103,6 +103,17 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .mon .tag{position:absolute;top:4px;right:4px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:900;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em}
 .rar{font-size:10px!important;letter-spacing:.08em;text-transform:uppercase;font-weight:900!important}
 [hidden]{display:none!important}
+/* en la compu */
+.only-desk{display:none}
+.desk .only-desk{display:revert}
+.desk .only-touch,.desk #joy{display:none}
+.desk .how{grid-template-columns:auto 1fr;max-width:44ch}
+.keys{position:fixed;left:calc(var(--sl) + 12px);bottom:calc(var(--sb) + 12px);background:var(--shade);border:2px solid var(--line);padding:8px 10px;font-size:13px;font-weight:800;line-height:1.55;pointer-events:none;text-shadow:1px 1px 0 #000}
+.desk .keys{display:block}
+.keys kbd,.how kbd{display:inline-block;min-width:20px;padding:0 5px;margin:0 1px;border:2px solid rgba(255,255,255,.35);border-bottom-width:3px;background:rgba(0,0,0,.35);font-family:var(--display);font-size:12px;text-align:center;line-height:16px}
+.slot i{position:absolute;left:3px;top:0;font-style:normal;font-family:var(--display);font-size:10px;color:rgba(255,255,255,.55);display:none}
+.desk .slot i{display:block}
+@media (max-width:900px){.desk .keys{display:none}}
 </style>
 </head>
 <body>
@@ -124,6 +135,13 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <button id="jumpBtn">Saltar</button>
 </div>
 <div class="hot" id="hot"></div>
+<div class="keys only-desk">
+  <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o flechas: caminar<br>
+  <kbd>Espacio</kbd> saltar · <kbd>Q</kbd><kbd>E</kbd> girar<br>
+  Arrastrá el mouse: mirar · Ruedita: zoom<br>
+  Clic: romper / atrapar · Clic derecho: poner<br>
+  <kbd>1</kbd>–<kbd>7</kbd> bloque · <kbd>C</kbd> hacer cubo · <kbd>P</kbd> Pokédex
+</div>
 
 <div class="overlay" id="dexOv" hidden>
   <div class="card">
@@ -152,10 +170,15 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <div class="card">
     <h1 class="logo">Bichos<span>y Bloques</span></h1>
     <div class="how">
-      <b>Mover</b><span>Usá el círculo de la izquierda</span>
-      <b>Mirar</b><span>Arrastrá el dedo por la pantalla</span>
-      <b>Bloques</b><span>Tocá un bloque para romperlo o ponerlo</span>
-      <b>Pokémon</b><span>Tocá un Pokémon para lanzarle un cubo</span>
+      <b class="only-touch">Mover</b><span class="only-touch">Usá el círculo de la izquierda</span>
+      <b class="only-touch">Mirar</b><span class="only-touch">Arrastrá el dedo por la pantalla</span>
+      <b class="only-touch">Bloques</b><span class="only-touch">Tocá un bloque para romperlo o ponerlo</span>
+      <b class="only-touch">Pokémon</b><span class="only-touch">Tocá un Pokémon para lanzarle un cubo</span>
+      <b class="only-desk">Caminar</b><span class="only-desk"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o las flechas</span>
+      <b class="only-desk">Saltar</b><span class="only-desk"><kbd>Espacio</kbd></span>
+      <b class="only-desk">Mirar</b><span class="only-desk">Arrastrá con el mouse, o <kbd>Q</kbd> <kbd>E</kbd></span>
+      <b class="only-desk">Bloques</b><span class="only-desk">Clic rompe · clic derecho pone</span>
+      <b class="only-desk">Pokémon</b><span class="only-desk">Hacé clic en un Pokémon para lanzarle un cubo</span>
     </div>
     <button class="btn primary" id="playBtn">Jugar</button>
     <p id="loadMsg">Preparando el mundo…</p>
@@ -163,6 +186,6 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 </div>
 
 <script src="js/three.min.js"></script>
-<script src="js/game.js?v=2"></script>
+<script src="js/game.js?v=3"></script>
 </body>
 </html>

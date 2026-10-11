@@ -8,10 +8,10 @@ Juego casero para uso personal. Las imágenes de los Pokémon se cargan desde la
 
 ## Cómo se juega
 
-- **Mover:** el círculo de abajo a la izquierda (o W A S D en la compu).
-- **Mirar alrededor:** arrastrar el dedo por la pantalla (o las flechas).
+- **Mover:** el círculo de abajo a la izquierda (en la compu: W A S D o las flechas).
+- **Mirar alrededor:** arrastrar el dedo por la pantalla (en la compu: arrastrar el mouse, o Q / E).
 - **Saltar:** el botón redondo (o la barra espaciadora). Para subir un escalón basta con caminar contra él.
-- **Romper / Poner:** el botón amarillo cambia de modo. Después se toca un bloque cerca. Elegir un bloque de la barra de abajo pasa directo a modo Poner.
+- **Romper / Poner:** el botón amarillo cambia de modo. Después se toca un bloque cerca. Elegir un bloque de la barra de abajo pasa directo a modo Poner. En la compu: clic rompe, clic derecho pone, 1–7 elige bloque, R cambia de modo.
 - **Atrapar Pokémon:** tocar un Pokémon le tira un cubo. Algunos se escapan; los raros cuestan más (Eevee, Onix, Snorlax, y los rarísimos Mew y Rayquaza negro).
 - **Hacer cubo:** 1 madera + 1 piedra.
 - **Pokédex:** muestra los Pokémon encontrados. Tocando uno se elige quién te sigue (hasta 3).

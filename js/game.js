@@ -654,7 +654,7 @@ function voxelRay(o, d, max) {
   }
   return null;
 }
-function tapAt(cx, cy) {
+function tapAt(cx, cy, forceMode) {
   if (!running) return;
   const ndc = new THREE.Vector2(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
@@ -671,7 +671,7 @@ function tapAt(cx, cy) {
   if (!hv) return;
   const head = player.body.p.clone().add(new THREE.Vector3(0, 1.4, 0));
   if (head.distanceTo(new THREE.Vector3(hv.x + .5, hv.y + .5, hv.z + .5)) > REACH) { toast('Está muy lejos. Acercate.'); beep(120, .1); return; }
-  if (mode === 'break') breakBlock(hv); else placeBlock(hv);
+  if ((forceMode || mode) === 'break') breakBlock(hv); else placeBlock(hv);
 }
 function breakBlock(h) {
   if (h.v === B.BED) { toast('Esa roca no se rompe.'); beep(120, .12); return; }
@@ -710,6 +710,7 @@ ITEMS.forEach((it, i) => {
   const b = document.createElement('button'); b.className = 'slot'; b.setAttribute('aria-label', it.name);
   const c = tileCanvas(it.tile);
   b.appendChild(c); b.appendChild(document.createElement('b'));
+  const num = document.createElement('i'); num.textContent = i + 1; b.appendChild(num);
   b.addEventListener('click', () => { sel = i; setMode('place'); updateUI(); toast(it.name + ' — tocá un bloque para ponerlo', 1500); });
   hot.appendChild(b);
 });
@@ -768,6 +769,9 @@ $('resetBtn').addEventListener('click', () => {
 });
 
 /* ================= controles ================= */
+// compu con mouse y teclado: se esconde el joystick y se muestran las teclas
+const DESK = matchMedia('(hover:hover) and (pointer:fine)').matches;
+if (DESK) document.body.classList.add('desk');
 const joy = { x: 0, y: 0, id: null };
 const joyEl = $('joy'), knob = $('knob');
 joyEl.addEventListener('pointerdown', e => { e.preventDefault(); joy.id = e.pointerId; joyEl.setPointerCapture(e.pointerId); joyMove(e); });
@@ -779,10 +783,10 @@ function joyMove(e) {
   if (l > R) { dx = dx / l * R; dy = dy / l * R; }
   joy.x = dx / R; joy.y = dy / R; knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
 }
-const look = { id: null, x: 0, y: 0, sx: 0, sy: 0, t: 0, moved: false };
+const look = { id: null, x: 0, y: 0, sx: 0, sy: 0, t: 0, moved: false, btn: 0 };
 canvas.addEventListener('pointerdown', e => {
   if (look.id !== null) return; look.id = e.pointerId; canvas.setPointerCapture(e.pointerId);
-  look.x = look.sx = e.clientX; look.y = look.sy = e.clientY; look.t = performance.now(); look.moved = false;
+  look.x = look.sx = e.clientX; look.y = look.sy = e.clientY; look.t = performance.now(); look.moved = false; look.btn = e.pointerType === 'mouse' ? e.button : 0;
 });
 canvas.addEventListener('pointermove', e => {
   if (e.pointerId !== look.id) return;
@@ -792,7 +796,8 @@ canvas.addEventListener('pointermove', e => {
 });
 ['pointerup', 'pointercancel'].forEach(ev => canvas.addEventListener(ev, e => {
   if (e.pointerId !== look.id) return; look.id = null;
-  if (ev === 'pointerup' && !look.moved && performance.now() - look.t < 500) tapAt(e.clientX, e.clientY);
+  // en la compu: clic izquierdo rompe, clic derecho pone (como en Minecraft)
+  if (ev === 'pointerup' && !look.moved && performance.now() - look.t < 500) tapAt(e.clientX, e.clientY, look.btn === 2 ? 'place' : DESK && look.btn === 0 ? 'break' : null);
 }));
 canvas.addEventListener('wheel', e => { camDist = clamp(camDist + e.deltaY * .01, 3.5, 12); }, { passive: true });
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -800,16 +805,19 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 const keys = {};
 addEventListener('keydown', e => {
   if (newOpen) { if (e.key === 'Enter' || e.key === 'Escape' || e.code === 'Space') { e.preventDefault(); $('newClose').click(); } return; }
-  if (!$('dexOv').hidden) { if (e.key === 'Escape' || e.key === 'l' || e.key === 'L') $('dexClose').click(); return; }
+  if (!$('dexOv').hidden) { if (e.key === 'Escape' || e.code === 'KeyL' || e.code === 'KeyP') $('dexClose').click(); return; }
   keys[e.code] = true;
   if (e.code === 'Space') { e.preventDefault(); doJump(); }
-  else if (e.code === 'KeyE' || e.code === 'KeyQ') { setMode(mode === 'break' ? 'place' : 'break'); updateUI(); }
+  else if (e.code === 'KeyR' || e.code === 'Tab') { e.preventDefault(); setMode(mode === 'break' ? 'place' : 'break'); updateUI(); }
   else if (e.code === 'KeyC') craft();
-  else if (e.code === 'KeyL') $('bookBtn').click();
+  else if (e.code === 'KeyL' || e.code === 'KeyP') $('bookBtn').click();
   else if (/^Digit[1-7]$/.test(e.code)) { sel = +e.code.slice(5) - 1; setMode('place'); updateUI(); toast(ITEMS[sel].name, 900); }
   if (e.code.startsWith('Arrow')) e.preventDefault();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; }); // que no quede caminando solo
+// después de hacer clic en un botón, sacarle el foco para que la barra espaciadora no lo vuelva a apretar
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
 
 /* ================= bucle ================= */
 function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
@@ -819,9 +827,10 @@ const camTarget = new THREE.Vector3(), tmp = new THREE.Vector3();
 function updatePlayer(dt, now) {
   const b = player.body;
   let jx = joy.x, jy = joy.y;
-  if (keys.KeyA) jx -= 1; if (keys.KeyD) jx += 1; if (keys.KeyW) jy -= 1; if (keys.KeyS) jy += 1;
-  if (keys.ArrowLeft) camYaw += dt * 2.2; if (keys.ArrowRight) camYaw -= dt * 2.2;
-  if (keys.ArrowUp) camPitch = clamp(camPitch + dt * 1.2, .08, 1.25); if (keys.ArrowDown) camPitch = clamp(camPitch - dt * 1.2, .08, 1.25);
+  // caminar: W A S D o las flechas
+  if (keys.KeyA || keys.ArrowLeft) jx -= 1; if (keys.KeyD || keys.ArrowRight) jx += 1; if (keys.KeyW || keys.ArrowUp) jy -= 1; if (keys.KeyS || keys.ArrowDown) jy += 1;
+  // girar la cámara con Q / E (o arrastrando el mouse)
+  if (keys.KeyQ) camYaw += dt * 2.4; if (keys.KeyE) camYaw -= dt * 2.4;
   const l = Math.hypot(jx, jy); if (l > 1) { jx /= l; jy /= l; }
   const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
   const mx = fx * -jy + rx * jx, mz = fz * -jy + rz * jx, ml = Math.hypot(mx, mz);
