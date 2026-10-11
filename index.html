@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Bichos y Bloques</title>
+<meta name="theme-color" content="#5fb4ff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bichos y Bloques">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Nunito:wght@700;800;900&display=swap">
+<style>
+:root{
+  --ink:#f6f3e6; --shade:rgba(12,18,15,.62); --shade-2:rgba(12,18,15,.82); --line:rgba(255,255,255,.22);
+  --accent:#f2b233; --accent-ink:#2a1d05; --place:#4aa3f0; --place-ink:#06223f; --good:#7bd389;
+  --panel:#22302a; --panel-2:#17201c; --edge:#0b110e; --muted:#a9b8ad;
+  --display:"Pixelify Sans", ui-monospace, "Courier New", monospace;
+  --body:"Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px); --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;touch-action:none;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#5fb4ff;color:var(--ink);font-family:var(--body);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block}
+button{font-family:var(--body);font-weight:900;color:var(--ink);cursor:pointer;border:3px solid var(--line);background:var(--shade);border-bottom-width:6px}
+button:active{transform:translateY(3px);border-bottom-width:3px}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.top{position:fixed;top:calc(var(--st) + 10px);left:calc(var(--sl) + 12px);right:calc(var(--sr) + 12px);display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:var(--shade);border:2px solid var(--line);padding:5px 9px;font-weight:900;font-size:15px;display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;text-shadow:1px 1px 0 #000}
+.chip i{display:inline-block;width:16px;height:16px;background:#b8864a;border:3px solid #6b4423;position:relative}
+.chip i::after{content:"";position:absolute;inset:3px;background:var(--accent)}
+.chip .dot{display:inline-block;width:14px;height:14px;background:var(--good);border:2px solid #2d6b3a}
+#bookBtn{pointer-events:auto;padding:8px 14px;font-size:16px}
+
+.toast{position:fixed;left:50%;top:calc(var(--st) + 56px);transform:translateX(-50%);background:var(--shade-2);border:2px solid var(--accent);padding:8px 14px;font-weight:900;font-size:16px;width:max-content;max-width:calc(100% - 32px);text-align:center;transition:opacity .25s;pointer-events:none;text-shadow:1px 1px 0 #000}
+.toast.off{opacity:0}
+
+#joy{position:fixed;left:calc(var(--sl) + 18px);bottom:calc(var(--sb) + 74px);width:128px;height:128px;border-radius:50%;background:rgba(12,18,15,.35);border:3px solid var(--line)}
+#knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(246,243,230,.85);border:3px solid rgba(0,0,0,.35);pointer-events:none}
+.right{position:fixed;right:calc(var(--sr) + 16px);bottom:calc(var(--sb) + 74px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;gap:8px;align-items:end;justify-items:end}
+#jumpBtn{grid-column:2;grid-row:1 / span 2;width:86px;height:86px;border-radius:50%;font-size:15px;background:rgba(246,243,230,.2)}
+#modeBtn{grid-column:1;grid-row:1;width:92px;height:52px;font-size:15px;background:var(--accent);color:var(--accent-ink);border-color:#a86f10}
+#modeBtn.place{background:var(--place);color:var(--place-ink);border-color:#1d5f99}
+#craftBtn{grid-column:1;grid-row:2;width:92px;height:52px;font-size:14px;line-height:1.05}
+
+.hot{position:fixed;left:50%;bottom:calc(var(--sb) + 10px);transform:translateX(-50%);display:flex;gap:3px;padding:3px;background:rgba(0,0,0,.4)}
+.slot{position:relative;width:44px;height:44px;padding:0;border:3px solid rgba(255,255,255,.2);border-bottom-width:3px;background:rgba(20,26,22,.7);display:flex;align-items:center;justify-content:center}
+.slot:active{transform:none;border-bottom-width:3px}
+.slot canvas{width:28px;height:28px;image-rendering:pixelated}
+.slot b{position:absolute;right:3px;bottom:0;font-family:var(--display);font-size:14px;text-shadow:1px 1px 0 #000}
+.slot.sel{border-color:#fff;background:rgba(70,80,70,.85)}
+.slot.empty canvas{opacity:.3}
+@media (max-width:380px){.slot{width:39px;height:39px}.slot canvas{width:24px;height:24px}#joy{width:112px;height:112px}#jumpBtn{width:76px;height:76px}#modeBtn,#craftBtn{width:82px}}
+
+.overlay{position:fixed;inset:0;background:rgba(5,9,7,.78);display:flex;align-items:center;justify-content:center;padding:calc(var(--st) + 16px) calc(var(--sr) + 16px) calc(var(--sb) + 16px) calc(var(--sl) + 16px);z-index:20}
+.card{background:var(--panel);border:4px solid var(--edge);box-shadow:0 0 0 3px #3a5046;padding:18px;width:min(560px,100%);max-height:100%;overflow:auto;touch-action:pan-y;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+.card *{touch-action:pan-y}
+.card h2{font-family:var(--display);font-size:26px;margin:0}
+.card p{margin:0;color:var(--muted);font-weight:700}
+.btn{min-height:54px;padding:8px 16px;font-size:17px;background:var(--panel-2);border-color:#3a5046}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:#a86f10}
+.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+#title{background:linear-gradient(#5fb4ff,#bfe6ff 70%,#7ccf5a 70%,#5fae3f)}
+#title .card{background:var(--shade-2);box-shadow:none;border-color:rgba(0,0,0,.4);gap:14px;padding:24px 20px}
+.logo{font-family:var(--display);font-weight:700;font-size:clamp(38px,10vw,64px);line-height:.95;margin:0;text-shadow:4px 4px 0 #0b110e;letter-spacing:.01em}
+.logo span{color:var(--accent);display:block;font-size:.6em}
+.how{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;text-align:left;font-weight:800;color:var(--ink);font-size:15px;max-width:34ch}
+.how b{color:var(--accent);font-family:var(--display);font-weight:500}
+#playBtn{font-size:24px;min-width:200px;min-height:64px;font-family:var(--display)}
+
+.dex{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;width:100%}
+.mon{position:relative;background:var(--panel-2);border:3px solid #3a5046;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ink);font-family:var(--body)}
+.mon:active{transform:none;border-bottom-width:3px}
+.mon img{width:80px;height:80px}
+.mon strong{font-family:var(--display);font-size:17px;font-weight:500}
+.mon span{font-size:12px;color:var(--muted);font-weight:700}
+.mon.got{border-color:var(--good)}
+.mon.follow{border-color:var(--accent);background:#2c2a1a}
+.mon .tag{position:absolute;top:4px;right:4px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:900;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em}
+.rar{font-size:10px!important;letter-spacing:.08em;text-transform:uppercase;font-weight:900!important}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="top">
+  <div class="chips">
+    <div class="chip" title="Cubos atrapadores"><i></i><span id="cubeCount">5</span></div>
+    <div class="chip" title="Bichos encontrados"><span class="dot"></span><span id="dexCount">0/8</span></div>
+  </div>
+  <button id="bookBtn">Libro</button>
+</div>
+<div class="toast off" id="toast"></div>
+
+<div id="joy"><div id="knob"></div></div>
+<div class="right">
+  <button id="modeBtn">Romper</button>
+  <button id="craftBtn">Hacer<br>cubo</button>
+  <button id="jumpBtn">Saltar</button>
+</div>
+<div class="hot" id="hot"></div>
+
+<div class="overlay" id="dexOv" hidden>
+  <div class="card">
+    <h2>Libro de Bichos</h2>
+    <p id="dexSum"></p>
+    <div class="dex" id="dexGrid"></div>
+    <div class="row">
+      <button class="btn primary" id="dexClose">Seguir jugando</button>
+      <button class="btn" id="resetBtn">Mundo nuevo</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="title">
+  <div class="card">
+    <h1 class="logo">Bichos<span>y Bloques</span></h1>
+    <div class="how">
+      <b>Mover</b><span>Usá el círculo de la izquierda</span>
+      <b>Mirar</b><span>Arrastrá el dedo por la pantalla</span>
+      <b>Bloques</b><span>Tocá un bloque para romperlo o ponerlo</span>
+      <b>Bichos</b><span>Tocá un bicho para lanzarle un cubo</span>
+    </div>
+    <button class="btn primary" id="playBtn">Jugar</button>
+    <p id="loadMsg">Preparando el mundo…</p>
+  </div>
+</div>
+
+<script src="js/three.min.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
