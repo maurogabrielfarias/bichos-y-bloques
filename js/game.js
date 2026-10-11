@@ -1,4 +1,4 @@
-/* Bichos y Bloques 3D — juego casero de bloques y bichos */
+/* Bichos y Bloques 3D — juego casero de bloques y Pokémon */
 (function () {
 'use strict';
 
@@ -25,17 +25,42 @@ const ITEMS = [
 ];
 const DROP = { 1: 'tierra', 2: 'tierra', 3: 'piedra', 4: 'arena', 5: 'madera', 6: 'hojas', 7: 'madera', 8: 'piedra', 10: 'pasto', 11: 'flor', 12: 'flor' };
 
+// Pokémon reales: n = número de la Pokédex (las imágenes se cargan de PokeAPI)
+// w = qué tan seguido aparece, c = chance de atraparlo, hab = dónde le gusta estar, s = tamaño
 const MONS = [
-  { id: 'brotito', name: 'Brotito', w: 55, c: .75, hab: null, rar: 'Común', tip: 'Vive en cualquier pasto alto' },
-  { id: 'gotin', name: 'Gotín', w: 20, c: .65, hab: 'agua', rar: 'Común', tip: 'Le gusta estar cerca del agua' },
-  { id: 'piedron', name: 'Piedrón', w: 15, c: .55, hab: 'piedra', rar: 'Común', tip: 'Se esconde cerca de las piedras' },
-  { id: 'zumbi', name: 'Zumbi', w: 15, c: .6, hab: 'flor', rar: 'Común', tip: 'Vuela cerca de las flores', fly: true },
-  { id: 'hongui', name: 'Hongui', w: 15, c: .6, hab: 'arbol', rar: 'Común', tip: 'Aparece debajo de los árboles' },
-  { id: 'nubi', name: 'Nubi', w: 5, c: .4, hab: null, rar: 'Raro', tip: 'Flota por ahí, muy de vez en cuando', fly: true },
-  { id: 'velin', name: 'Velín', w: 4, c: .35, hab: null, rar: 'Raro', tip: 'Su llamita se ve entre el pasto' },
-  { id: 'cristalin', name: 'Cristalín', w: 1.5, c: .25, hab: null, rar: 'Rarísimo', tip: 'Casi nadie lo encontró' }
+  { id: 'bulbasaur', n: 1, name: 'Bulbasaur', w: 30, c: .75, hab: null, rar: 'Común', tip: 'Vive en el pasto alto', col: '#5fbf8f', emoji: '🌱' },
+  { id: 'pikachu', n: 25, name: 'Pikachu', w: 25, c: .65, hab: null, rar: 'Común', tip: 'Corre por toda la isla', col: '#f7d02c', emoji: '⚡' },
+  { id: 'charmander', n: 4, name: 'Charmander', w: 18, c: .65, hab: null, rar: 'Común', tip: 'Su llamita se ve entre el pasto', col: '#f08030', emoji: '🔥' },
+  { id: 'squirtle', n: 7, name: 'Squirtle', w: 20, c: .65, hab: 'agua', rar: 'Común', tip: 'Le gusta estar cerca del agua', col: '#6390f0', emoji: '💧' },
+  { id: 'psyduck', n: 54, name: 'Psyduck', w: 12, c: .6, hab: 'agua', rar: 'Común', tip: 'Se rasca la cabeza en la orilla', col: '#f5d76e', emoji: '🦆' },
+  { id: 'geodude', n: 74, name: 'Geodude', w: 15, c: .55, hab: 'piedra', rar: 'Común', tip: 'Se esconde cerca de las piedras', col: '#a8a090', emoji: '🪨' },
+  { id: 'butterfree', n: 12, name: 'Butterfree', w: 12, c: .6, hab: 'flor', rar: 'Común', tip: 'Vuela cerca de las flores', col: '#b8a8f0', emoji: '🦋', fly: true },
+  { id: 'oddish', n: 43, name: 'Oddish', w: 12, c: .6, hab: 'flor', rar: 'Común', tip: 'Se planta al lado de las flores', col: '#5a7fd0', emoji: '🌿' },
+  { id: 'caterpie', n: 10, name: 'Caterpie', w: 15, c: .7, hab: 'arbol', rar: 'Común', tip: 'Come hojas debajo de los árboles', col: '#78c850', emoji: '🐛' },
+  { id: 'paras', n: 46, name: 'Paras', w: 10, c: .6, hab: 'arbol', rar: 'Común', tip: 'Aparece a la sombra de los árboles', col: '#e07040', emoji: '🍄' },
+  { id: 'eevee', n: 133, name: 'Eevee', w: 5, c: .4, hab: null, rar: 'Raro', tip: 'Muy de vez en cuando pasea por ahí', col: '#c08850', emoji: '🦊' },
+  { id: 'onix', n: 95, name: 'Onix', w: 4, c: .4, hab: 'piedra', rar: 'Raro', tip: 'Gigante de piedra, cerca de las rocas', col: '#9a9a9a', emoji: '🐍', s: 2.3 },
+  { id: 'snorlax', n: 143, name: 'Snorlax', w: 3, c: .35, hab: null, rar: 'Raro', tip: 'Duerme la siesta en cualquier lado', col: '#3a6a80', emoji: '😴', s: 2 },
+  { id: 'mew', n: 151, name: 'Mew', w: 1.5, c: .25, hab: null, rar: 'Rarísimo', tip: 'Casi nadie lo encontró', col: '#f5a8c8', emoji: '✨', fly: true },
+  { id: 'rayquaza', n: 384, name: 'Rayquaza negro', w: 1, c: .2, hab: null, rar: 'Rarísimo', tip: 'Un dragón variocolor que vuela muy alto', col: '#2a2a2a', emoji: '🐉', fly: true, shiny: true, s: 2.8 }
 ];
 const MON = Object.fromEntries(MONS.map(m => [m.id, m]));
+// partidas guardadas con los bichos viejos: se pasan a su Pokémon parecido
+const OLDMON = { brotito: 'bulbasaur', gotin: 'squirtle', piedron: 'geodude', zumbi: 'butterfree', hongui: 'paras', nubi: 'eevee', velin: 'charmander', cristalin: 'mew' };
+const SPR = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
+const pixelURL = m => SPR + (m.shiny ? 'shiny/' : '') + m.n + '.png';
+const artURL = m => SPR + 'other/official-artwork/' + (m.shiny ? 'shiny/' : '') + m.n + '.png';
+// <img> con respaldo: si la imagen grande falla prueba la otra, y si no hay internet muestra el emoji
+function monImg(m, big) {
+  const urls = big ? [artURL(m), pixelURL(m)] : [pixelURL(m), artURL(m)];
+  if (m.shiny) urls.push(SPR + (big ? 'other/official-artwork/' : '') + m.n + '.png');
+  return '<span class="pk"><img alt="' + m.name + '" src="' + urls[0] + '" data-alt="' + urls.slice(1).join(' ') + '" onerror="monImgFail(this)"><i style="background:' + m.col + '">' + m.emoji + '</i></span>';
+}
+window.monImgFail = img => {
+  const rest = (img.dataset.alt || '').split(' ').filter(Boolean);
+  if (rest.length) { img.dataset.alt = rest.slice(1).join(' '); img.src = rest[0]; }
+  else img.parentNode.classList.add('fail');
+};
 
 /* ================= utilidades ================= */
 function rng32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -282,64 +307,40 @@ function bx(p, w, h, d, col, x, y, z, opts) { const m = new THREE.Mesh(BOX, mat(
 function eyes(p, y, z, sep, s) {
   [-1, 1].forEach(k => { bx(p, s, s * 1.15, .04, '#141414', k * sep, y, z); bx(p, s * .38, s * .38, .02, '#ffffff', k * sep - s * .18, y + s * .22, z + .025); });
 }
+// sprite pixelado de cada Pokémon (una textura compartida por especie)
+const spriteTex = {};
+function monTexture(m) {
+  let t = spriteTex[m.id];
+  if (t) return t;
+  t = spriteTex[m.id] = { ok: null, mat: null, wait: [] };
+  const urls = [pixelURL(m)]; if (m.shiny) urls.push(SPR + m.n + '.png');
+  const loader = new THREE.TextureLoader(); loader.setCrossOrigin('anonymous');
+  (function tryLoad(i) {
+    loader.load(urls[i], tex => {
+      tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false; // estilo Minecraft
+      t.mat = new THREE.SpriteMaterial({ map: tex, alphaTest: .5 }); t.ok = true;
+      t.wait.splice(0).forEach(f => f());
+    }, undefined, () => { if (i + 1 < urls.length) tryLoad(i + 1); else { t.ok = false; t.wait.length = 0; } });
+  })(0);
+  return t;
+}
+// respaldo si la imagen no carga: un bloquecito del color del Pokémon con ojitos
+function fallbackMon(p, m) {
+  const g = new THREE.Group(); p.add(g);
+  bx(g, .62, .56, .62, m.col, 0, .28, 0); bx(g, .64, .08, .64, '#00000033', 0, .04, 0);
+  eyes(g, .36, .315, .13, .1); bx(g, .14, .05, .03, '#4a2a2a', 0, .2, .315);
+  bx(g, .1, .06, .03, '#ff9db0', -.21, .27, .315); bx(g, .1, .06, .03, '#ff9db0', .21, .27, .315);
+  return g;
+}
 function makeMon(id) {
-  const g = new THREE.Group(), body = new THREE.Group(); g.add(body); const parts = {};
-  switch (id) {
-    case 'brotito':
-      bx(body, .62, .5, .62, '#58b84a', 0, .25, 0); bx(body, .64, .08, .64, '#3f8a2b', 0, .04, 0);
-      eyes(body, .32, .32, .13, .1); bx(body, .14, .05, .03, '#7a2d2d', 0, .19, .315);
-      bx(body, .06, .2, .06, '#3f8a2b', 0, .6, 0);
-      parts.leafA = bx(body, .26, .05, .14, '#9be36b', -.12, .71, 0); parts.leafA.rotation.z = .5;
-      parts.leafB = bx(body, .26, .05, .14, '#9be36b', .12, .73, 0); parts.leafB.rotation.z = -.5;
-      bx(body, .1, .06, .03, '#ff9db0', -.21, .25, .315); bx(body, .1, .06, .03, '#ff9db0', .21, .25, .315);
-      break;
-    case 'gotin':
-      bx(body, .62, .36, .62, '#4aa3f0', 0, .18, 0); bx(body, .48, .2, .48, '#4aa3f0', 0, .46, 0); bx(body, .3, .14, .3, '#4aa3f0', 0, .62, 0); bx(body, .14, .12, .14, '#4aa3f0', 0, .74, 0);
-      bx(body, .1, .14, .03, '#dff1ff', -.16, .46, .245);
-      eyes(body, .27, .315, .13, .1); bx(body, .12, .05, .03, '#1d4f8a', 0, .15, .315);
-      break;
-    case 'piedron':
-      bx(body, .72, .58, .7, '#a3a3a3', 0, .4, 0); bx(body, .2, .12, .24, '#6c6c6c', -.2, .06, 0); bx(body, .2, .12, .24, '#6c6c6c', .2, .06, 0);
-      bx(body, .2, .1, .03, '#7d7d7d', -.18, .62, .355); bx(body, .14, .14, .03, '#8a8a8a', .25, .25, .355);
-      bx(body, .5, .06, .04, '#5a5a5a', 0, .56, .36); eyes(body, .46, .36, .14, .1); bx(body, .26, .05, .03, '#4a2a2a', 0, .3, .36);
-      bx(body, .16, .12, .16, '#8a8a8a', .22, .74, -.1);
-      break;
-    case 'zumbi':
-      bx(body, .5, .44, .6, '#ffd23f', 0, .32, 0);
-      bx(body, .52, .46, .08, '#2a2a2a', 0, .32, -.04); bx(body, .52, .46, .08, '#2a2a2a', 0, .32, -.2);
-      bx(body, .08, .08, .1, '#2a2a2a', 0, .3, -.34);
-      eyes(body, .38, .305, .12, .1); bx(body, .1, .04, .03, '#7a2d2d', 0, .25, .305);
-      parts.wingL = bx(body, .32, .03, .2, '#cfefff', -.3, .58, -.05, { transparent: true, opacity: .8 });
-      parts.wingR = bx(body, .32, .03, .2, '#cfefff', .3, .58, -.05, { transparent: true, opacity: .8 });
-      bx(body, .03, .14, .03, '#2a2a2a', -.1, .6, .2); bx(body, .03, .14, .03, '#2a2a2a', .1, .6, .2);
-      break;
-    case 'hongui':
-      bx(body, .36, .4, .36, '#f0d6a8', 0, .2, 0); bx(body, .74, .26, .74, '#e04a3c', 0, .53, 0); bx(body, .5, .1, .5, '#e04a3c', 0, .7, 0);
-      [[-.22, -.15], [.2, .18], [.05, -.25], [-.12, .22]].forEach(([x, z]) => bx(body, .12, .02, .12, '#fff6e8', x, .76, z));
-      bx(body, .12, .1, .02, '#fff6e8', -.2, .55, .375); bx(body, .1, .08, .02, '#fff6e8', .22, .5, .375);
-      eyes(body, .24, .185, .08, .08);
-      break;
-    case 'nubi':
-      bx(body, .62, .34, .44, '#ffffff', 0, .3, 0); bx(body, .36, .3, .36, '#ffffff', -.3, .27, 0); bx(body, .36, .3, .36, '#ffffff', .3, .3, 0); bx(body, .38, .26, .34, '#ffffff', -.04, .52, 0);
-      bx(body, .6, .06, .4, '#c8d3dc', 0, .12, 0);
-      eyes(body, .33, .225, .12, .09); bx(body, .09, .05, .02, '#ffb3c1', -.22, .25, .225); bx(body, .09, .05, .02, '#ffb3c1', .22, .25, .225);
-      break;
-    case 'velin':
-      bx(body, .58, .06, .58, '#8a5a2f', 0, .03, 0); bx(body, .36, .52, .36, '#fff3d6', 0, .32, 0); bx(body, .38, .06, .38, '#f4e2b8', 0, .55, 0);
-      bx(body, .04, .08, .04, '#3a2a1a', 0, .62, 0);
-      parts.flame = new THREE.Group(); parts.flame.position.set(0, .7, 0); body.add(parts.flame);
-      bx(parts.flame, .16, .22, .16, '#ff8c2a', 0, .04, 0, { emissive: '#ff6a00' }); bx(parts.flame, .09, .14, .09, '#ffe066', 0, .02, .05, { emissive: '#ffcc00' });
-      eyes(body, .36, .185, .08, .08); bx(body, .08, .04, .02, '#7a2d2d', 0, .26, .185);
-      break;
-    case 'cristalin': {
-      bx(body, .46, .5, .46, '#9b5de5', 0, .3, 0);
-      const top = bx(body, .34, .34, .34, '#b98af0', 0, .6, 0); top.rotation.set(.6, .78, 0);
-      const s1 = bx(body, .14, .3, .14, '#e2c4ff', -.3, .2, -.05); s1.rotation.z = .4;
-      const s2 = bx(body, .12, .24, .12, '#e2c4ff', .3, .18, .05); s2.rotation.z = -.4;
-      eyes(body, .36, .235, .1, .09); bx(body, .1, .04, .02, '#4b1f7a', 0, .24, .235);
-      break; }
+  const m = MON[id], g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const fb = fallbackMon(body, m), t = monTexture(m), sz = m.s || 1.5;
+  function show() {
+    const sp = new THREE.Sprite(t.mat); sp.center.set(.5, .12); sp.scale.set(sz, sz, 1);
+    sp.userData.creature = g.userData.creature; body.add(sp); fb.visible = false;
   }
-  g.userData.parts = parts; g.userData.body = body;
+  if (t.ok) show(); else if (t.ok === null) t.wait.push(show);
+  g.userData.parts = {}; g.userData.body = body;
   return g;
 }
 function makePlayer() {
@@ -433,15 +434,16 @@ function load() {
     const s = JSON.parse(localStorage.getItem(SAVE)); if (!s || !s.seed) return false;
     seed = s.seed; generate(seed); edits = s.edits || {};
     for (const k in edits) world[+k] = edits[k];
-    inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; dex = s.dex || {};
-    party = (s.party || []).filter(id => dex[id] && MON[id]).slice(0, MAXP);
+    inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; dex = {};
+    for (const k in s.dex || {}) { const id = MON[k] ? k : OLDMON[k]; if (id) dex[id] = (dex[id] || 0) + s.dex[k]; }
+    party = [...new Set((s.party || []).map(id => MON[id] ? id : OLDMON[id]))].filter(id => dex[id] && MON[id]).slice(0, MAXP);
     player.body.p.fromArray(s.p); if (collides(player.body, player.body.p.x, player.body.p.y, player.body.p.z)) { const [x, y, z] = findSpawn(); player.body.p.set(x + .5, y, z + .5); }
     return true;
   } catch (e) { return false; }
 }
 function setBlock(x, y, z, v) { set(x, y, z, v); edits[idx(x, y, z)] = v; rebuildAround(x, z); saveSoon(); }
 
-/* ================= bichos ================= */
+/* ================= Pokémon ================= */
 function makeCreature(id, x, y, z) {
   const m = MON[id], c = { id, mon: m, model: makeMon(id), body: newBody(.28, .75), t: Math.random() * 3, dir: new THREE.Vector3(), yaw: Math.random() * 6, hop: 0, state: 'wander', alive: true };
   c.body.p.set(x, y, z); c.body.fly = !!m.fly; c.home = new THREE.Vector3(x, y, z); c.body.jumpV = 7.5;
@@ -464,7 +466,7 @@ function pickSpecies(x, y, z) {
   const ws = MONS.map(m => m.hab ? m.w * (nearType(x, y, z, m.hab) ? 3 : .25) : m.w);
   let s = ws.reduce((a, b) => a + b), r = Math.random() * s;
   for (let i = 0; i < MONS.length; i++) { r -= ws[i]; if (r <= 0) return MONS[i].id; }
-  return 'brotito';
+  return 'bulbasaur';
 }
 function spawnWild() {
   const p = player.body.p;
@@ -492,7 +494,6 @@ function animateCreature(c, dt, now, moving) {
   if (parts.wingL) { const f = Math.sin(now * .05) * .6; parts.wingL.rotation.z = f; parts.wingR.rotation.z = -f; }
   if (parts.flame) { const f = 1 + Math.sin(now * .03 + c.t) * .15; parts.flame.scale.set(1 / f, f, 1 / f); }
   if (parts.leafA) { parts.leafA.rotation.z = .5 + Math.sin(now * .006 + c.t) * .15; parts.leafB.rotation.z = -.5 - Math.sin(now * .006 + c.t) * .15; }
-  if (c.id === 'cristalin') body.rotation.y = now * .0015;
   placeShadow(c.shadow, c.body.p, .8);
 }
 function flyHover(c, dt) {
@@ -621,10 +622,11 @@ function resolveCatch() {
     removeCreature(c); wild.splice(wild.indexOf(c), 1);
     stars(at); [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, .15), i * 110));
     let msg = '¡Atrapaste a ' + m.name + '!';
-    if (first && party.length < MAXP) { party.push(c.id); const f = addFollower(c.id, at); f.state = 'emerge'; f.t = .5; msg += ' Ahora te sigue.'; }
-    else if (first) msg += ' Es nuevo en tu Libro.';
+    let follows = false;
+    if (first && party.length < MAXP) { party.push(c.id); const f = addFollower(c.id, at); f.state = 'emerge'; f.t = .5; follows = true; msg += ' Ahora te sigue.'; }
+    else if (first) msg += ' Es nuevo en tu Pokédex.';
     toast(msg, 3000);
-    if (first && MONS.every(mm => dex[mm.id])) setTimeout(() => toast('¡Completaste el Libro de Bichos! Sos un gran explorador.', 5000), 3100);
+    if (first) setTimeout(() => showNew(m, follows), 900);
   } else {
     c.model.visible = true; c.model.scale.setScalar(1); c.body.p.copy(at).setY(at.y - .2);
     stars(at, '#bbbbbb'); beep(160, .25, 'sawtooth');
@@ -724,26 +726,20 @@ jb.addEventListener('pointerdown', e => { e.preventDefault(); jumpHeld = true; d
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => jb.addEventListener(ev, () => { jumpHeld = false; }));
 function doJump() { const b = player.body; if (b.ground) { b.v.y = b.jumpV; b.ground = false; beep(260, .05, 'triangle'); } else if (b.inWater) b.v.y = 5; }
 
-// retratos para el Libro
-const portraits = {};
-function makePortraits() {
-  const S = 128, rt = new THREE.WebGLRenderTarget(S, S), buf = new Uint8Array(S * S * 4);
-  const ps = new THREE.Scene(); ps.add(new THREE.HemisphereLight(0xffffff, 0x7a9a5a, .9)); const dl = new THREE.DirectionalLight(0xffffff, .6); dl.position.set(3, 5, 4); ps.add(dl);
-  const pc = new THREE.PerspectiveCamera(30, 1, .1, 20); pc.position.set(1.05, 1.0, 2.1); pc.lookAt(0, .38, 0);
-  const prevClear = renderer.getClearColor(new THREE.Color()).getHex(), prevAlpha = renderer.getClearAlpha();
-  renderer.setClearColor(0x000000, 0);
-  MONS.forEach(m => {
-    const model = makeMon(m.id); model.rotation.y = -.35; ps.add(model);
-    renderer.setRenderTarget(rt); renderer.clear(); renderer.render(ps, pc); renderer.readRenderTargetPixels(rt, 0, 0, S, S, buf); renderer.setRenderTarget(null);
-    ps.remove(model);
-    const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), img = g.createImageData(S, S);
-    for (let y = 0; y < S; y++) img.data.set(buf.subarray((S - 1 - y) * S * 4, (S - y) * S * 4), y * S * 4);
-    g.putImageData(img, 0, 0);
-    const sil = document.createElement('canvas'); sil.width = sil.height = S; const sg = sil.getContext('2d'); sg.drawImage(c, 0, 0); sg.globalCompositeOperation = 'source-in'; sg.fillStyle = '#4a6356'; sg.fillRect(0, 0, S, S);
-    portraits[m.id] = { full: c.toDataURL(), sil: sil.toDataURL() };
-  });
-  renderer.setClearColor(prevClear, prevAlpha); rt.dispose();
+// cartel de "¡Pokémon nuevo!" con la imagen grande
+let newOpen = false;
+function showNew(m, follows) {
+  if (!$('title').hidden || !$('dexOv').hidden) return;
+  running = false; newOpen = true;
+  $('newArt').innerHTML = monImg(m, true);
+  $('newName').textContent = m.name;
+  $('newNum').textContent = 'N.º ' + String(m.n).padStart(3, '0') + (m.shiny ? ' · variocolor' : '');
+  const all = MONS.every(mm => dex[mm.id]);
+  $('newMsg').textContent = all ? '¡Completaste la Pokédex! Sos un gran entrenador.' : follows ? 'Ahora te sigue a todos lados.' : 'Ya está en tu Pokédex.';
+  $('newOv').hidden = false;
+  [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => beep(f, .12, 'triangle'), i * 120));
 }
+$('newClose').addEventListener('click', () => { $('newOv').hidden = true; newOpen = false; running = true; last = performance.now(); });
 
 let resetArm = false;
 function renderDex() {
@@ -751,7 +747,7 @@ function renderDex() {
   MONS.forEach(m => {
     const got = dex[m.id] || 0, f = party.includes(m.id), d = document.createElement('button');
     d.className = 'mon' + (got ? ' got' : '') + (f ? ' follow' : ''); d.disabled = !got;
-    d.innerHTML = (f ? '<span class="tag">Te sigue</span>' : '') + '<img alt="" src="' + (portraits[m.id] ? (got ? portraits[m.id].full : portraits[m.id].sil) : '') + '"><strong>' + (got ? m.name : '???') + '</strong><span class="rar" style="color:' + (m.rar === 'Común' ? 'var(--muted)' : 'var(--accent)') + '">' + m.rar + '</span><span>' + (got ? 'Atrapados: ' + got : m.tip) + '</span>';
+    d.innerHTML = (f ? '<span class="tag">Te sigue</span>' : '') + monImg(m, false) + '<em>N.º ' + String(m.n).padStart(3, '0') + '</em><strong>' + (got ? m.name : '???') + '</strong><span class="rar" style="color:' + (m.rar === 'Común' ? 'var(--muted)' : 'var(--accent)') + '">' + m.rar + '</span><span>' + (got ? 'Atrapados: ' + got : m.tip) + '</span>';
     if (got) d.addEventListener('click', () => {
       if (f) party = party.filter(id => id !== m.id);
       else if (party.length >= MAXP) { $('dexSum').textContent = 'Solo pueden seguirte ' + MAXP + ' a la vez. Tocá uno que te sigue para que descanse.'; beep(120, .1); return; }
@@ -761,14 +757,14 @@ function renderDex() {
     grid.appendChild(d);
   });
   const n = MONS.filter(m => dex[m.id]).length;
-  $('dexSum').textContent = (n === MONS.length ? '¡Los encontraste a todos! ' : 'Encontraste ' + n + ' de ' + MONS.length + '. ') + (n ? 'Tocá un bicho para que te siga (hasta ' + MAXP + ').' : 'Buscalos caminando por la isla.');
+  $('dexSum').textContent = (n === MONS.length ? '¡Los encontraste a todos! ' : 'Encontraste ' + n + ' de ' + MONS.length + '. ') + (n ? 'Tocá un Pokémon para que te siga (hasta ' + MAXP + ').' : 'Buscalos caminando por la isla.');
 }
-$('bookBtn').addEventListener('click', () => { if (!running) return; running = false; resetArm = false; $('resetBtn').textContent = 'Mundo nuevo'; renderDex(); $('dexOv').hidden = false; });
+$('bookBtn').addEventListener('click', () => { if (!running || newOpen) return; running = false; resetArm = false; $('resetBtn').textContent = 'Mundo nuevo'; renderDex(); $('dexOv').hidden = false; });
 $('dexClose').addEventListener('click', () => { $('dexOv').hidden = true; running = true; last = performance.now(); });
 $('resetBtn').addEventListener('click', () => {
   if (!resetArm) { resetArm = true; $('resetBtn').textContent = '¿Seguro? Tocá otra vez'; return; }
   wild.splice(0).forEach(removeCreature); newWorld(); buildAll(); rebuildFollowers(); updateUI(); save();
-  $('dexOv').hidden = true; running = true; last = performance.now(); toast('¡Isla nueva! Buscá bichos en el pasto alto.', 3000);
+  $('dexOv').hidden = true; running = true; last = performance.now(); toast('¡Isla nueva! Buscá Pokémon en el pasto alto.', 3000);
 });
 
 /* ================= controles ================= */
@@ -803,6 +799,7 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
 const keys = {};
 addEventListener('keydown', e => {
+  if (newOpen) { if (e.key === 'Enter' || e.key === 'Escape' || e.code === 'Space') { e.preventDefault(); $('newClose').click(); } return; }
   if (!$('dexOv').hidden) { if (e.key === 'Escape' || e.key === 'l' || e.key === 'L') $('dexClose').click(); return; }
   keys[e.code] = true;
   if (e.code === 'Space') { e.preventDefault(); doJump(); }
@@ -887,7 +884,7 @@ if (!load()) { freshState(); newWorld(); }
 buildAll();
 camYaw = player.yaw + Math.PI;
 camTarget.set(player.body.p.x, player.body.p.y + 1.35, player.body.p.z);
-try { makePortraits(); } catch (e) { }
+MONS.forEach(monTexture); // empieza a bajar las imágenes
 rebuildFollowers(); updateUI(); setMode('break');
 for (let i = 0; i < 8; i++) spawnWild();
 requestAnimationFrame(frame);
@@ -897,7 +894,7 @@ $('playBtn').addEventListener('click', () => {
   beep(523, .08); setTimeout(() => beep(784, .12), 90);
   try { const el = document.documentElement; if (el.requestFullscreen && matchMedia('(pointer:coarse)').matches) el.requestFullscreen().catch(() => { }); } catch (e) { }
   $('title').hidden = true; running = true; last = performance.now();
-  toast(Object.keys(dex).length ? '¡Bienvenido de vuelta!' : 'Buscá bichos en el pasto alto y tocalos para atraparlos', 3500);
+  toast(Object.keys(dex).length ? '¡Bienvenido de vuelta!' : 'Buscá Pokémon en el pasto alto y tocalos para atraparlos', 3500);
   save();
 });
 window.__game = { get player() { return player; }, get wild() { return wild; }, get followers() { return followers; }, tapAt, throwAt };

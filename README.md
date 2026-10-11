@@ -1,6 +1,8 @@
 # Bichos y Bloques
 
-Un juego casero en 3D: una isla de bloques para explorar, romper y construir, con bichos que se atrapan con cubos y te siguen a todos lados.
+Un juego casero en 3D: una isla de bloques para explorar, romper y construir, con Pokémon que se atrapan con cubos y te siguen a todos lados.
+
+Juego casero para uso personal. Las imágenes de los Pokémon se cargan desde las URLs públicas de [PokeAPI/sprites](https://github.com/PokeAPI/sprites) (hace falta internet; si no cargan aparece un emoji o un bloquecito de respaldo).
 
 **Jugar:** https://maurogabrielfarias.github.io/bichos-y-bloques/
 
@@ -10,9 +12,9 @@ Un juego casero en 3D: una isla de bloques para explorar, romper y construir, co
 - **Mirar alrededor:** arrastrar el dedo por la pantalla (o las flechas).
 - **Saltar:** el botón redondo (o la barra espaciadora). Para subir un escalón basta con caminar contra él.
 - **Romper / Poner:** el botón amarillo cambia de modo. Después se toca un bloque cerca. Elegir un bloque de la barra de abajo pasa directo a modo Poner.
-- **Atrapar bichos:** tocar un bicho le tira un cubo. Algunos se escapan; los raros cuestan más.
+- **Atrapar Pokémon:** tocar un Pokémon le tira un cubo. Algunos se escapan; los raros cuestan más (Eevee, Onix, Snorlax, y los rarísimos Mew y Rayquaza negro).
 - **Hacer cubo:** 1 madera + 1 piedra.
-- **Libro:** muestra los bichos encontrados. Tocando uno se elige quién te sigue (hasta 3).
+- **Pokédex:** muestra los Pokémon encontrados. Tocando uno se elige quién te sigue (hasta 3).
 
 El progreso se guarda solo en el navegador de cada celular.
 

@@ -78,7 +78,24 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .dex{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;width:100%}
 .mon{position:relative;background:var(--panel-2);border:3px solid #3a5046;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ink);font-family:var(--body)}
 .mon:active{transform:none;border-bottom-width:3px}
-.mon img{width:80px;height:80px}
+.mon .pk{width:88px;height:88px}
+.mon em{font-style:normal;font-size:11px;color:var(--muted);font-family:var(--display)}
+.mon:not(.got) .pk img{filter:brightness(0) opacity(.5)}
+.mon:not(.got) .pk i{filter:grayscale(1) brightness(.5)}
+/* imágenes de Pokémon: pixeladas estilo Minecraft, con emoji de respaldo */
+.pk{position:relative;display:flex;align-items:center;justify-content:center}
+.pk img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges}
+.pk i{display:none;width:70%;height:70%;align-items:center;justify-content:center;font-style:normal;font-size:38px;border:4px solid rgba(0,0,0,.35);image-rendering:pixelated}
+.pk.fail img{display:none}
+.pk.fail i{display:flex}
+#newOv .card{gap:8px}
+#newArt .pk{width:min(240px,60vw);height:min(240px,60vw)}
+#newArt .pk img{image-rendering:auto;filter:drop-shadow(0 6px 0 rgba(0,0,0,.35))}
+#newArt .pk i{font-size:90px}
+#newName{font-family:var(--display);font-size:34px;margin:0;color:var(--accent);text-shadow:3px 3px 0 #0b110e}
+.newTop{font-family:var(--display);font-size:20px;margin:0}
+#newOv .card{animation:pop .35s ease-out}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
 .mon strong{font-family:var(--display);font-size:17px;font-weight:500}
 .mon span{font-size:12px;color:var(--muted);font-weight:700}
 .mon.got{border-color:var(--good)}
@@ -94,9 +111,9 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 <div class="top">
   <div class="chips">
     <div class="chip" title="Cubos atrapadores"><i></i><span id="cubeCount">5</span></div>
-    <div class="chip" title="Bichos encontrados"><span class="dot"></span><span id="dexCount">0/8</span></div>
+    <div class="chip" title="Pokémon encontrados"><span class="dot"></span><span id="dexCount">0/15</span></div>
   </div>
-  <button id="bookBtn">Libro</button>
+  <button id="bookBtn">Pokédex</button>
 </div>
 <div class="toast off" id="toast"></div>
 
@@ -110,13 +127,24 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
 <div class="overlay" id="dexOv" hidden>
   <div class="card">
-    <h2>Libro de Bichos</h2>
+    <h2>Pokédex</h2>
     <p id="dexSum"></p>
     <div class="dex" id="dexGrid"></div>
     <div class="row">
       <button class="btn primary" id="dexClose">Seguir jugando</button>
       <button class="btn" id="resetBtn">Mundo nuevo</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="newOv" hidden>
+  <div class="card">
+    <p class="newTop">¡Pokémon nuevo!</p>
+    <div id="newArt"></div>
+    <h2 id="newName"></h2>
+    <p id="newNum"></p>
+    <p id="newMsg"></p>
+    <button class="btn primary" id="newClose">¡Genial!</button>
   </div>
 </div>
 
@@ -127,7 +155,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
       <b>Mover</b><span>Usá el círculo de la izquierda</span>
       <b>Mirar</b><span>Arrastrá el dedo por la pantalla</span>
       <b>Bloques</b><span>Tocá un bloque para romperlo o ponerlo</span>
-      <b>Bichos</b><span>Tocá un bicho para lanzarle un cubo</span>
+      <b>Pokémon</b><span>Tocá un Pokémon para lanzarle un cubo</span>
     </div>
     <button class="btn primary" id="playBtn">Jugar</button>
     <p id="loadMsg">Preparando el mundo…</p>
