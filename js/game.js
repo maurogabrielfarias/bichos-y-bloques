@@ -150,7 +150,7 @@ const FOG = new THREE.Color('#cdeeff');
 })();
 scene.fog = new THREE.Fog(FOG, 30, 78);
 const camera = new THREE.PerspectiveCamera(62, 1, .1, 200);
-scene.add(new THREE.HemisphereLight(0xffffff, 0x7a9a5a, .85));
+const hemi = new THREE.HemisphereLight(0xffffff, 0x7a9a5a, .85); scene.add(hemi);
 const sunLight = new THREE.DirectionalLight(0xffffff, .55); sunLight.position.set(4, 10, 6); scene.add(sunLight);
 
 const atlasTex = new THREE.CanvasTexture(atlas);
@@ -461,7 +461,7 @@ function newWorld() {
   player.body.p.set(x + .5, y, z + .5); player.body.v.set(0, 0, 0);
 }
 function save() {
-  try { localStorage.setItem(SAVE, JSON.stringify({ seed, edits, p: player.body.p.toArray(), inv, cubes, gems, dex, party })); } catch (e) { }
+  try { localStorage.setItem(SAVE, JSON.stringify({ seed, edits, p: player.body.p.toArray(), inv, cubes, gems, dex, party, adv, tday })); } catch (e) { }
 }
 let saveT = null; function saveSoon() { clearTimeout(saveT); saveT = setTimeout(save, 600); }
 function load() {
@@ -469,7 +469,7 @@ function load() {
     const s = JSON.parse(localStorage.getItem(SAVE)); if (!s || !s.seed) return false;
     seed = s.seed; generate(seed); edits = s.edits || {};
     for (const k in edits) world[+k] = edits[k];
-    inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; gems = s.gems | 0; dex = {};
+    inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; gems = s.gems | 0; dex = {}; if (s.adv) Object.assign(adv, s.adv); if (typeof s.tday === 'number') tday = s.tday;
     for (const k in s.dex || {}) { const id = MON[k] ? k : OLDMON[k]; if (id) dex[id] = (dex[id] || 0) + s.dex[k]; }
     party = [...new Set((s.party || []).map(id => MON[id] ? id : OLDMON[id]))].filter(id => dex[id] && MON[id]).slice(0, MAXP);
     player.body.p.fromArray(s.p); if (collides(player.body, player.body.p.x, player.body.p.y, player.body.p.z)) { const [x, y, z] = findSpawn(); player.body.p.set(x + .5, y, z + .5); }
@@ -707,10 +707,20 @@ function attackTarget() {
 function attack() {
   if (!running || catching || atkCD > 0) return;
   if (!followers.length) { toast('Necesitás Pokémon que te sigan para atacar.'); beep(120, .1); return; }
+  const z = ADV && nearestZombie(player.body.p, 12);
+  if (z) { atkCD = 1.1; followers.forEach((f, i) => setTimeout(() => beamMob(f, z), i * 200)); return; }
   const t = attackTarget(); if (!t) { toast('No hay ningún Pokémon salvaje cerca.'); beep(120, .1); return; }
   atkCD = 1.1;
   player.yaw = Math.atan2(t.body.p.x - player.body.p.x, t.body.p.z - player.body.p.z);
   followers.forEach((f, i) => setTimeout(() => beam(f, t), i * 200));
+}
+function beamMob(f, z) {
+  if (!z.alive || !followers.includes(f)) return;
+  const a = f.body.p.clone().add(new THREE.Vector3(0, .6, 0)), b = z.body.p.clone().add(new THREE.Vector3(0, 1, 0)), dir = b.clone().sub(a);
+  f.targetYaw = Math.atan2(dir.x, dir.z); if (f.body.ground) f.body.v.y = 4;
+  for (let i = 0; i < 12; i++) particle(a.clone().addScaledVector(dir, i / 24), dir.clone().multiplyScalar(2.6 + Math.random()), i % 3 ? f.mon.col : '#ffffff', .14, .3, 0);
+  beep(300 + Math.random() * 200, .08, 'sawtooth', .04);
+  setTimeout(() => hurtMob(z, 2 + (f.mon.stage || 0), a), 300);
 }
 function beam(f, t) {
   if (!t.alive || t.state === 'caught' || !followers.includes(f)) return;
@@ -754,7 +764,9 @@ function tapAt(cx, cy, forceMode) {
   const objs = wild.filter(c => c.alive && c.state !== 'caught').map(c => c.model).concat(followers.map(c => c.model));
   const hitsC = ray.intersectObjects(objs, true);
   const hv = voxelRay(ray.ray.origin, ray.ray.direction, 40);
-  if (hitsC.length && (!hv || hitsC[0].distance < hv.t + .3)) {
+  const hitC = hitsC.length && (!hv || hitsC[0].distance < hv.t + .3) ? hitsC[0] : null;
+  if (advTap(ray, hv, hitC)) return; // zombies, lobos y arco (modo aventura)
+  if (hitC) {
     const c = hitsC[0].object.userData.creature;
     if (!c) return;
     if (followers.includes(c)) { hearts(c.body.p); beep(880, .08, 'sine'); setTimeout(() => beep(1175, .1, 'sine'), 80); c.body.v.y = 5; return; }
@@ -814,7 +826,7 @@ function updateUI() {
   $('cubeCount').textContent = cubes; $('gemCount').textContent = gems; $('dexCount').textContent = MONS.filter(m => dex[m.id]).length + '/' + MONS.length;
 }
 $('modeBtn').addEventListener('click', () => { setMode(mode === 'break' ? 'place' : 'break'); updateUI(); beep(400, .05); });
-$('craftBtn').addEventListener('click', craft);
+$('craftBtn').addEventListener('click', () => ADV ? openCraft() : craft());
 $('atkBtn').addEventListener('click', attack);
 let jumpHeld = false;
 const jb = $('jumpBtn');
@@ -850,6 +862,7 @@ function evolve(fromId, toId) {
 }
 let resetArm = false;
 function renderDex() {
+  $('switchMode').textContent = ADV ? 'Pasar a modo Pokémon 🌞' : 'Pasar a modo Aventura 🌙';
   const grid = $('dexGrid'); grid.innerHTML = '';
   [...MONS].sort((a, b) => a.n - b.n).forEach(m => {
     const got = dex[m.id] || 0, f = party.includes(m.id), d = document.createElement('div');
@@ -916,12 +929,15 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
 const keys = {};
 addEventListener('keydown', e => {
+  if (faintOpen) { if (e.key === 'Enter' || e.code === 'Space') { e.preventDefault(); $('faintBtn').click(); } return; }
+  if (!$('craftOv').hidden) { if (e.key === 'Escape' || e.code === 'KeyC') $('craftClose').click(); return; }
   if (newOpen) { if (e.key === 'Enter' || e.key === 'Escape' || e.code === 'Space') { e.preventDefault(); $('newClose').click(); } return; }
   if (!$('dexOv').hidden) { if (e.key === 'Escape' || e.code === 'KeyL' || e.code === 'KeyP') $('dexClose').click(); return; }
   keys[e.code] = true;
   if (e.code === 'Space') { e.preventDefault(); doJump(); }
   else if (e.code === 'KeyR' || e.code === 'Tab') { e.preventDefault(); setMode(mode === 'break' ? 'place' : 'break'); updateUI(); }
-  else if (e.code === 'KeyC') craft();
+  else if (e.code === 'KeyC') ADV ? openCraft() : craft();
+  else if (e.code === 'KeyX' && ADV) cycleWeapon();
   else if (e.code === 'KeyF') attack();
   else if (e.code === 'KeyL' || e.code === 'KeyP') $('bookBtn').click();
   else if (/^Digit[1-7]$/.test(e.code)) { sel = +e.code.slice(5) - 1; setMode('place'); updateUI(); toast(ITEMS[sel].name, 900); }
@@ -988,8 +1004,9 @@ function frame(now) {
     followers.forEach((c, i) => updateFollower(c, i, dt, now));
     for (let i = wild.length - 1; i >= 0; i--) { const c = wild[i]; if (!c.alive) { wild.splice(i, 1); continue; } updateWild(c, dt, now); if (c.alive && c.state !== 'caught' && c.body.p.distanceTo(player.body.p) > 42) { removeCreature(c); wild.splice(i, 1); } }
     if (atkCD > 0) atkCD -= dt;
-    if ((atkUiT -= dt) <= 0) { atkUiT = .25; const show = followers.length > 0 && !!attackTarget(); if ($('atkBtn').hidden === show) $('atkBtn').hidden = !show; }
+    if ((atkUiT -= dt) <= 0) { atkUiT = .25; const show = followers.length > 0 && (!!attackTarget() || (ADV && !!nearestZombie(player.body.p, 12))); if ($('atkBtn').hidden === show) $('atkBtn').hidden = !show; }
     spawnT -= dt; if (spawnT <= 0) { spawnT = 1.2; if (wild.filter(c => c.alive).length < 12) spawnWild(); }
+    if (ADV) updateAdv(dt);
     updateCatch(dt);
     updateParticles(dt);
     if (Math.random() < dt * .2) saveSoon();
@@ -997,9 +1014,316 @@ function frame(now) {
   updateCamera(dt);
   waterTex.offset.x = (now * .00002) % 1; waterTex.offset.y = (now * .000013) % 1;
   clouds.forEach(c => { c.position.x += dt * .6; if (c.position.x > WX + 80) c.position.x = -80; });
-  sun.position.set(camera.position.x + 50, camera.position.y + 60, camera.position.z - 70); sun.lookAt(camera.position);
+  updateSky();
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
+}
+
+/* ================= modo aventura: noche, zombies, lobos, espada y arco ================= */
+let ADV = false;
+const DAYLEN = 420; // segundos por día completo: unos 4 y medio de día y 2 y medio de noche
+let tday = .3; // 0 = amanecer · .68 = anochecer
+const adv = { hp: 10, huesos: 0, flechas: 0, espada: false, arco: false, arma: 'mano', lobos: 0 };
+const mobs = [], arrows = [];
+let hurtT = 0, sinceHurt = 99, regenT = 0, zSpawnT = 0, wSpawnT = 0, wasNight = false, faintOpen = false;
+
+// --- cielo, sol, luna y estrellas
+const skyCanvas = scene.background.image, skyG = skyCanvas.getContext('2d');
+const DAYSKY = ['#4aa8ff', '#9ad6ff', '#cdeeff'].map(c => new THREE.Color(c)), NIGHTSKY = ['#03061a', '#0b1433', '#1a2546'].map(c => new THREE.Color(c)), DUSK = new THREE.Color('#ff9a5a');
+const moon = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), new THREE.MeshBasicMaterial({ color: '#eef3ff', fog: false, transparent: true }));
+scene.add(moon);
+const starPts = (function () {
+  const n = 500, pos = new Float32Array(n * 3), r = rng32(7);
+  for (let i = 0; i < n; i++) { const a = r() * Math.PI * 2, b = Math.acos(r() * .95), R = 150; pos[i * 3] = Math.sin(b) * Math.cos(a) * R; pos[i * 3 + 1] = Math.cos(b) * R; pos[i * 3 + 2] = Math.sin(b) * Math.sin(a) * R; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: '#ffffff', size: 2, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+  scene.add(p); return p;
+})();
+function sunAngle() { return tday < .68 ? tday / .68 * Math.PI : Math.PI + (tday - .68) / .32 * Math.PI; }
+const isNight = () => Math.sin(sunAngle()) < -.05;
+let lastLight = -1, lastDusk = -1;
+const tmpC = new THREE.Color(), fogDay = new THREE.Color('#cdeeff');
+function updateSky() {
+  const a = sunAngle(), h = Math.sin(a);
+  const light = clamp((h + .25) / .5, 0, 1), L = .26 + .74 * light, dusk = clamp(1 - Math.abs(h) / .25, 0, 1) * (light > 0 ? 1 : .4);
+  const cp = camera.position;
+  sun.position.set(cp.x + Math.cos(a) * 90, cp.y + h * 90, cp.z - 40); sun.lookAt(cp); sun.visible = h > -.15;
+  moon.position.set(cp.x - Math.cos(a) * 90, cp.y - h * 90, cp.z + 40); moon.lookAt(cp); moon.visible = h < .15;
+  starPts.position.copy(cp); starPts.material.opacity = clamp(-h * 3, 0, 1) * .9;
+  if (Math.abs(L - lastLight) < .006 && Math.abs(dusk - lastDusk) < .02) return;
+  lastLight = L; lastDusk = dusk;
+  const gr = skyG.createLinearGradient(0, 0, 0, 256), cols = [0, 1, 2].map(i => tmpC.clone().lerpColors(NIGHTSKY[i], DAYSKY[i], light));
+  cols[2].lerp(DUSK, dusk * .7); cols[1].lerp(DUSK, dusk * .3);
+  gr.addColorStop(0, '#' + cols[0].getHexString()); gr.addColorStop(.55, '#' + cols[1].getHexString()); gr.addColorStop(1, '#' + cols[2].getHexString());
+  skyG.fillStyle = gr; skyG.fillRect(0, 0, 4, 256); scene.background.needsUpdate = true;
+  scene.fog.color.copy(cols[2]); scene.fog.far = 50 + 28 * light;
+  matSolid.color.setScalar(L); matPlant.color.setScalar(L); sea.material.color.setScalar(L); seabed.material.color.set('#c9b26c').multiplyScalar(L);
+  clouds[0].material.color.setScalar(.35 + .65 * L);
+  for (const k in spriteTex) if (spriteTex[k].mat) spriteTex[k].mat.color.setScalar(.45 + .55 * L);
+  hemi.intensity = .2 + .65 * L; sunLight.intensity = .55 * L;
+}
+
+// --- modelos
+function makeZombie() {
+  const g = new THREE.Group(), r = {};
+  const SK = '#5f9e4c', SK2 = '#4a8a3a', SH = '#2d9fa0', PA = '#3b3f9c';
+  r.legL = new THREE.Group(); r.legL.position.set(-.13, .62, 0); g.add(r.legL); bx(r.legL, .24, .62, .26, PA, 0, -.31, 0);
+  r.legR = new THREE.Group(); r.legR.position.set(.13, .62, 0); g.add(r.legR); bx(r.legR, .24, .62, .26, PA, 0, -.31, 0);
+  bx(g, .54, .62, .3, SH, 0, .93, 0);
+  r.armL = new THREE.Group(); r.armL.position.set(-.37, 1.18, 0); g.add(r.armL); bx(r.armL, .2, .62, .22, SK, 0, -.28, 0); r.armL.rotation.x = -1.45;
+  r.armR = new THREE.Group(); r.armR.position.set(.37, 1.18, 0); g.add(r.armR); bx(r.armR, .2, .62, .22, SK, 0, -.28, 0); r.armR.rotation.x = -1.45;
+  r.head = new THREE.Group(); r.head.position.set(0, 1.24, 0); g.add(r.head);
+  bx(r.head, .5, .5, .5, SK, 0, .25, 0); bx(r.head, .52, .12, .52, SK2, 0, .46, 0);
+  [-1, 1].forEach(k => bx(r.head, .1, .08, .02, '#101010', k * .12, .28, .255));
+  bx(r.head, .2, .05, .02, '#2a4a20', 0, .14, .255);
+  g.userData.rig = r; return g;
+}
+function makeWolf() {
+  const g = new THREE.Group(), r = {}, W = '#dcdcdc', W2 = '#b9b9b9';
+  bx(g, .46, .44, .9, W, 0, .62, 0); bx(g, .5, .5, .4, W2, 0, .66, .22);
+  r.head = new THREE.Group(); r.head.position.set(0, .78, .5); g.add(r.head);
+  bx(r.head, .42, .4, .34, W, 0, 0, .1); bx(r.head, .22, .18, .24, W2, 0, -.08, .36); bx(r.head, .08, .06, .04, '#1a1a1a', 0, -.02, .48);
+  bx(r.head, .1, .14, .06, W2, -.13, .26, .02); bx(r.head, .1, .14, .06, W2, .13, .26, .02);
+  [-1, 1].forEach(k => bx(r.head, .07, .06, .02, '#1a1a1a', k * .11, .06, .28));
+  r.collar = bx(g, .5, .1, .14, '#d8312a', 0, .72, .42); r.collar.visible = false;
+  r.tail = new THREE.Group(); r.tail.position.set(0, .74, -.45); g.add(r.tail); bx(r.tail, .12, .12, .4, W2, 0, 0, -.18); r.tail.rotation.x = .6;
+  r.legs = [[-.14, .32], [.14, .32], [-.14, -.32], [.14, -.32]].map(([x, z]) => { const l = new THREE.Group(); l.position.set(x, .42, z); g.add(l); bx(l, .13, .42, .13, W2, 0, -.21, 0); return l; });
+  g.userData.rig = r; return g;
+}
+function makeArrowMesh() { const g = new THREE.Group(); bx(g, .04, .04, .6, '#8a6038', 0, 0, 0); bx(g, .08, .08, .1, '#9a9a9a', 0, 0, .32); bx(g, .12, .02, .12, '#f2f2f2', 0, 0, -.28); return g; }
+// espada y arco en la mano
+(function () {
+  const r = player.model.userData.rig, hand = new THREE.Group(); hand.position.set(0, -.55, .02); r.armR.add(hand);
+  r.sword = new THREE.Group(); hand.add(r.sword);
+  bx(r.sword, .07, .1, .62, '#cfd8de', 0, 0, .42); bx(r.sword, .03, .04, .5, '#ffffff', 0, .04, .42); bx(r.sword, .26, .07, .08, '#6b4423', 0, 0, .08); bx(r.sword, .07, .07, .16, '#4e3018', 0, 0, -.04);
+  r.bow = new THREE.Group(); hand.add(r.bow); r.bow.rotation.x = Math.PI / 2;
+  bx(r.bow, .06, .36, .06, '#7d5629', 0, 0, .12); const t1 = bx(r.bow, .06, .26, .06, '#7d5629', 0, .27, .05); t1.rotation.x = -.5; const t2 = bx(r.bow, .06, .26, .06, '#7d5629', 0, -.27, .05); t2.rotation.x = .5;
+  bx(r.bow, .015, .78, .015, '#f2f2f2', 0, 0, -.02);
+  r.sword.visible = r.bow.visible = false;
+})();
+function showWeapon() { const r = player.model.userData.rig; r.sword.visible = ADV && adv.arma === 'espada'; r.bow.visible = ADV && adv.arma === 'arco'; }
+
+// --- bichos de la noche y lobos
+function makeMob(kind, x, y, z) {
+  const m = { kind, model: kind === 'zombie' ? makeZombie() : makeWolf(), body: newBody(.3, kind === 'zombie' ? 1.7 : .85), hp: kind === 'zombie' ? 10 : 8, yaw: Math.random() * 6, t: 0, dir: new THREE.Vector3(), atkT: 0, phase: 0, alive: true, tamed: false };
+  m.body.p.set(x, y, z); m.body.jumpV = 8; m.home = new THREE.Vector3(x, y, z);
+  m.model.traverse(o => { o.userData.mob = m; }); scene.add(m.model); m.shadow = makeShadow(.9);
+  mobs.push(m); return m;
+}
+function removeMob(m) { m.alive = false; scene.remove(m.model); scene.remove(m.shadow); const i = mobs.indexOf(m); if (i >= 0) mobs.splice(i, 1); }
+function spotAround(dmin, dmax, test) {
+  const p = player.body.p;
+  for (let k = 0; k < 20; k++) {
+    const a = Math.random() * Math.PI * 2, d = dmin + Math.random() * (dmax - dmin), x = Math.floor(p.x + Math.cos(a) * d), z = Math.floor(p.z + Math.sin(a) * d);
+    if (x < 2 || z < 2 || x >= WX - 2 || z >= WZ - 2) continue;
+    const y = surfaceY(x, z); if (!y || y <= SEA || SOLID[get(x, y + 1, z)]) continue;
+    if (test && !test(x, y, z)) continue;
+    return [x + .5, y, z + .5];
+  }
+  return null;
+}
+const tamedWolves = () => mobs.filter(m => m.kind === 'wolf' && m.tamed);
+function spawnTamed(n) { for (let i = 0; i < n; i++) { const p = player.body.p, w = makeMob('wolf', p.x - 1 - i * .7, p.y + .3, p.z - 1); w.tamed = true; w.model.userData.rig.collar.visible = true; } }
+function nearestZombie(from, maxD) { let best = null, bd = maxD; mobs.forEach(m => { if (m.kind !== 'zombie' || !m.alive) return; const d = m.body.p.distanceTo(from); if (d < bd) { bd = d; best = m; } }); return best; }
+function hurtMob(m, dmg, from) {
+  if (!m.alive) return;
+  m.hp -= dmg;
+  const away = m.body.p.clone().sub(from).setY(0).normalize();
+  m.body.v.x = away.x * 6; m.body.v.z = away.z * 6; m.body.v.y = 4.5; m.knock = .3;
+  for (let i = 0; i < 8; i++) particle(m.body.p.clone().add(new THREE.Vector3(0, 1, 0)), new THREE.Vector3((Math.random() - .5) * 3, 2 + Math.random() * 2, (Math.random() - .5) * 3), i % 2 ? '#d8312a' : '#ff7a6a', .1, .5);
+  beep(140, .1, 'square', .06);
+  if (m.hp <= 0) killMob(m);
+}
+function killMob(m, burned) {
+  for (let i = 0; i < 16; i++) particle(m.body.p.clone().add(new THREE.Vector3((Math.random() - .5) * .6, .5 + Math.random(), (Math.random() - .5) * .6)), new THREE.Vector3((Math.random() - .5) * 2, 1 + Math.random() * 2, (Math.random() - .5) * 2), i % 2 ? '#bbbbbb' : '#777777', .16, .8, -1);
+  if (m.kind === 'zombie' && !burned) {
+    const got = [];
+    if (Math.random() < .75) { adv.huesos++; got.push('+1 hueso 🦴'); }
+    if (Math.random() < .35) { adv.flechas += 2; got.push('+2 flechas'); }
+    if (got.length) toast(got.join(' · '), 1400);
+    beep(400, .08); setTimeout(() => beep(300, .12), 80);
+  }
+  removeMob(m); updateAdvUI(); saveSoon();
+}
+function hurtPlayer(d, from) {
+  if (hurtT > 0 || faintOpen || !running) return;
+  adv.hp = Math.max(0, adv.hp - d); hurtT = .7; sinceHurt = 0;
+  const away = player.body.p.clone().sub(from).setY(0).normalize();
+  player.body.v.x = away.x * 7; player.body.v.z = away.z * 7; player.body.v.y = 5;
+  const fl = $('hurtFx'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on');
+  beep(110, .2, 'sawtooth', .07); updateAdvUI();
+  if (adv.hp <= 0) faint();
+}
+function faint() {
+  faintOpen = true; running = false; $('faintOv').hidden = false; beep(220, .3, 'triangle'); setTimeout(() => beep(160, .4, 'triangle'), 250);
+}
+$('faintBtn').addEventListener('click', () => {
+  mobs.filter(m => m.kind === 'zombie').forEach(removeMob);
+  const [x, y, z] = findSpawn(); player.body.p.set(x + .5, y, z + .5); player.body.v.set(0, 0, 0);
+  adv.hp = 10; tamedWolves().forEach(w => { w.body.p.set(x - .5, y + .3, z - .5); w.body.v.set(0, 0, 0); });
+  followers.forEach(f => { f.body.p.set(x + .5, y + .5, z + 1.5); f.body.v.set(0, 0, 0); });
+  $('faintOv').hidden = true; faintOpen = false; running = true; last = performance.now(); updateAdvUI(); save();
+  toast('Volviste a casa con toda la vida. ¡Cuidado con los zombies!', 3000);
+});
+function animLegs(m, dt, sp) {
+  const r = m.model.userData.rig; m.phase += dt * sp * 2.6; const sw = Math.sin(m.phase) * Math.min(1, sp / 2.5) * .7;
+  if (m.kind === 'zombie') { r.legL.rotation.x = sw; r.legR.rotation.x = -sw; r.armL.rotation.x = -1.45 + sw * .2; r.armR.rotation.x = -1.45 - sw * .2; }
+  else { r.legs[0].rotation.x = r.legs[3].rotation.x = sw; r.legs[1].rotation.x = r.legs[2].rotation.x = -sw; r.tail.rotation.y = Math.sin(performance.now() * (m.tamed ? .015 : .005)) * .5; }
+}
+function walkTo(m, tx, tz, speed, dt) {
+  const dx = tx - m.body.p.x, dz = tz - m.body.p.z, d = Math.hypot(dx, dz) || 1;
+  const k = Math.min(1, dt * 8); m.body.v.x += (dx / d * speed - m.body.v.x) * k; m.body.v.z += (dz / d * speed - m.body.v.z) * k;
+  m.tyaw = Math.atan2(dx, dz);
+}
+function updateMob(m, dt) {
+  const p = player.body.p, b = m.body, d = Math.hypot(p.x - b.p.x, p.z - b.p.z);
+  if (collides(b, b.p.x, b.p.y, b.p.z)) b.p.y = Math.floor(b.p.y) + 1; // si quedó trabado adentro de un bloque, subirlo
+  m.atkT -= dt; m.t -= dt; if (m.knock > 0) m.knock -= dt;
+  if (m.knock > 0) { /* empujado: dejar que vuele */ }
+  else if (m.kind === 'zombie') {
+    if (!isNight()) { m.hp -= dt * 2.5; if (Math.random() < dt * 8) particle(b.p.clone().add(new THREE.Vector3((Math.random() - .5) * .5, 1.6, (Math.random() - .5) * .5)), new THREE.Vector3(0, 1.5, 0), Math.random() < .5 ? '#ff8a2a' : '#555', .14, .6, -1); if (m.hp <= 0) { killMob(m, true); return; } }
+    const wolf = tamedWolves().find(w => w.body.p.distanceTo(b.p) < 1.6);
+    if (d < 26) walkTo(m, p.x, p.z, 2.2, dt);
+    else { if (m.t <= 0) { m.t = 2 + Math.random() * 2; const a = Math.random() * 6.28; m.dir.set(Math.cos(a), 0, Math.sin(a)); } walkTo(m, b.p.x + m.dir.x, b.p.z + m.dir.z, .9, dt); }
+    if (d < 1.25 && Math.abs(p.y - b.p.y) < 1.6 && m.atkT <= 0) { m.atkT = 1.1; hurtPlayer(2, b.p); }
+    else if (wolf && m.atkT <= 0) { m.atkT = 1.1; wolf.body.v.y = 4; }
+  } else if (!m.tamed) {
+    if (m.t <= 0) { m.t = 2 + Math.random() * 3; if (Math.random() < .4) m.dir.set(0, 0, 0); else { const a = Math.random() * 6.28; m.dir.set(Math.cos(a), 0, Math.sin(a)); } if (b.p.distanceTo(m.home) > 7) m.dir.copy(m.home).sub(b.p).setY(0).normalize(); }
+    if (m.dir.x || m.dir.z) walkTo(m, b.p.x + m.dir.x, b.p.z + m.dir.z, 1.4, dt); else { b.v.x *= .8; b.v.z *= .8; }
+    if (d > 44) { removeMob(m); return; }
+  } else {
+    const z = nearestZombie(p, 12);
+    if (z) { walkTo(m, z.body.p.x, z.body.p.z, 5.2, dt); if (z.body.p.distanceTo(b.p) < 1.5 && m.atkT <= 0) { m.atkT = .8; hurtMob(z, 3, b.p); } }
+    else if (d > 2.6) walkTo(m, p.x, p.z, Math.min(5.8, 1.5 + d * 1.2), dt);
+    else { b.v.x *= .8; b.v.z *= .8; m.tyaw = Math.atan2(p.x - b.p.x, p.z - b.p.z); }
+    if (d > 20 || p.y - b.p.y > 6) { b.p.set(p.x - Math.sin(player.yaw) * 1.5, p.y + 1, p.z - Math.cos(player.yaw) * 1.5); b.v.set(0, 0, 0); }
+  }
+  // no caminar al agua ni a precipicios (salvo los amaestrados que siguen)
+  if (!m.tamed && (b.v.x || b.v.z)) { const l = Math.hypot(b.v.x, b.v.z) || 1, sy = surfaceY(b.p.x + b.v.x / l * .7, b.p.z + b.v.z / l * .7); if (sy === null || sy < b.p.y - 2.5) { b.v.x = -b.v.x; b.v.z = -b.v.z; m.dir.multiplyScalar(-1); } }
+  moveBody(b, dt);
+  if (m.tyaw !== undefined) m.yaw = angLerp(m.yaw, m.tyaw, Math.min(1, dt * 8));
+  m.model.position.copy(b.p); m.model.rotation.y = m.yaw;
+  animLegs(m, dt, Math.hypot(b.v.x, b.v.z)); placeShadow(m.shadow, b.p, .9);
+}
+
+// --- flechas
+function shootArrow(target) {
+  if (adv.flechas < 1) { toast('No te quedan flechas. Hacé más en "Hacer" (1 madera + 1 piedra = 4).', 2600); beep(120, .12); return; }
+  adv.flechas--; updateAdvUI();
+  const from = player.body.p.clone().add(new THREE.Vector3(0, 1.35, 0)), dir = target.clone().sub(from), dist = dir.length();
+  dir.normalize(); dir.y += Math.min(.25, dist * .006);
+  player.yaw = Math.atan2(dir.x, dir.z); player.throwT = .3;
+  const a = { m: makeArrowMesh(), v: dir.multiplyScalar(32), life: 3, stuck: false };
+  a.m.position.copy(from).addScaledVector(a.v, .02); scene.add(a.m); arrows.push(a);
+  beep(700, .05, 'triangle'); setTimeout(() => beep(420, .06, 'triangle'), 40);
+}
+function updateArrows(dt) {
+  for (let i = arrows.length - 1; i >= 0; i--) {
+    const a = arrows[i]; a.life -= dt;
+    if (a.life <= 0) { scene.remove(a.m); arrows.splice(i, 1); continue; }
+    if (a.stuck) continue;
+    const steps = 3;
+    for (let s = 0; s < steps && !a.stuck; s++) {
+      a.v.y -= 12 * dt / steps; a.m.position.addScaledVector(a.v, dt / steps);
+      const q = a.m.position;
+      const hit = mobs.find(m => m.alive && m.kind === 'zombie' && Math.hypot(q.x - m.body.p.x, q.z - m.body.p.z) < .5 && q.y > m.body.p.y && q.y < m.body.p.y + 1.9);
+      if (hit) { hurtMob(hit, 5, q.clone().sub(a.v)); scene.remove(a.m); arrows.splice(i, 1); a.stuck = true; a.gone = true; break; }
+      if (SOLID[get(Math.floor(q.x), Math.floor(q.y), Math.floor(q.z))]) { a.stuck = true; a.life = Math.min(a.life, 2); beep(240, .04); }
+    }
+    if (!a.gone) a.m.lookAt(a.m.position.clone().add(a.v));
+  }
+}
+
+// --- tocar zombies y lobos (devuelve true si el toque fue para ellos)
+function advTap(rayc, hv, hitC) {
+  if (!ADV) return false;
+  const hm = mobs.length ? rayc.intersectObjects(mobs.map(m => m.model), true) : [];
+  const mobHit = hm.length && (!hv || hm[0].distance < hv.t + .3) && (!hitC || hm[0].distance < hitC.distance) ? hm[0] : null;
+  if (mobHit) {
+    const m = mobHit.object.userData.mob; if (!m) return true;
+    const d = m.body.p.distanceTo(player.body.p);
+    if (m.kind === 'wolf') {
+      if (m.tamed) { hearts(m.body.p); m.body.v.y = 4; beep(880, .08, 'sine'); return true; }
+      if (d > 5) { toast('Acercate al lobo.'); return true; }
+      if (adv.huesos < 1) { toast('Los lobos se amaestran con huesos 🦴. Los zombies los sueltan de noche.', 3000); return true; }
+      if (tamedWolves().length >= 3) { toast('Ya tenés 3 lobos amigos.'); return true; }
+      adv.huesos--; player.throwT = .3;
+      if (Math.random() < .45) { m.tamed = true; m.model.userData.rig.collar.visible = true; adv.lobos = tamedWolves().length; hearts(m.body.p); hearts(m.body.p); toast('¡El lobo ahora es tu amigo! Te va a cuidar de los zombies.', 3000); [660, 880, 1100].forEach((f, i) => setTimeout(() => beep(f, .1, 'sine'), i * 90)); }
+      else { for (let i = 0; i < 6; i++) particle(m.body.p.clone().add(new THREE.Vector3(0, 1, 0)), new THREE.Vector3((Math.random() - .5), 1.5, (Math.random() - .5)), '#888', .1, .7, 0); toast('El lobo se comió el hueso pero todavía no confía. Probá con otro.', 2600); beep(300, .1); }
+      updateAdvUI(); saveSoon(); return true;
+    }
+    // zombie
+    if (adv.arma === 'arco') { shootArrow(m.body.p.clone().add(new THREE.Vector3(0, 1.1, 0))); return true; }
+    if (d > 4) { toast('Acercate para pegarle.'); return true; }
+    player.yaw = Math.atan2(m.body.p.x - player.body.p.x, m.body.p.z - player.body.p.z); player.throwT = .3;
+    hurtMob(m, adv.arma === 'espada' ? 4 : 1, player.body.p); return true;
+  }
+  if (adv.arma === 'arco' && !hitC) {
+    const t = hv ? new THREE.Vector3(hv.x + .5, hv.y + .5, hv.z + .5) : rayc.ray.origin.clone().addScaledVector(rayc.ray.direction, 40);
+    shootArrow(t); return true;
+  }
+  return false;
+}
+
+// --- mesa de trabajo (en aventura el botón "Hacer" abre recetas)
+const RECIPES = [
+  { id: 'cubo', name: 'Cubo atrapador', icon: '🟫', need: { madera: 1, piedra: 1 }, make: () => { cubes++; } },
+  { id: 'espada', name: 'Espada', icon: '🗡️', need: { madera: 1, piedra: 2 }, once: () => adv.espada, make: () => { adv.espada = true; adv.arma = 'espada'; } },
+  { id: 'arco', name: 'Arco', icon: '🏹', need: { madera: 3, pasto: 2 }, once: () => adv.arco, make: () => { adv.arco = true; adv.arma = 'arco'; adv.flechas += 4; } },
+  { id: 'flechas', name: '4 flechas', icon: '➶', need: { madera: 1, piedra: 1 }, make: () => { adv.flechas += 4; } }
+];
+const NEEDNAME = { madera: 'madera', piedra: 'piedra', pasto: 'pasto alto' };
+function renderCraft() {
+  const box = $('craftList'); box.innerHTML = '';
+  RECIPES.forEach(r => {
+    const have = r.once && r.once(), ok = !have && Object.keys(r.need).every(k => inv[k] >= r.need[k]);
+    const b = document.createElement('button'); b.className = 'recipe' + (ok ? '' : ' off');
+    b.innerHTML = '<i>' + r.icon + '</i><strong>' + r.name + '</strong><span>' + (have ? 'Ya la tenés' : Object.keys(r.need).map(k => r.need[k] + ' ' + NEEDNAME[k] + ' (tenés ' + inv[k] + ')').join(' + ')) + '</span>';
+    b.addEventListener('click', () => {
+      if (!ok) { beep(120, .1); $('craftMsg').textContent = have ? 'Ya tenés ' + r.name.toLowerCase() + '.' : 'Te falta material. Rompé bloques para juntar.'; return; }
+      Object.keys(r.need).forEach(k => inv[k] -= r.need[k]); r.make();
+      beep(520, .1); setTimeout(() => beep(780, .12), 90); $('craftMsg').textContent = '¡Hiciste ' + r.name.toLowerCase() + '!';
+      showWeapon(); updateUI(); updateAdvUI(); renderCraft(); saveSoon();
+    });
+    box.appendChild(b);
+  });
+}
+function openCraft() { if (!running) return; running = false; $('craftMsg').textContent = 'Elegí qué hacer.'; renderCraft(); $('craftOv').hidden = false; }
+$('craftClose').addEventListener('click', () => { $('craftOv').hidden = true; running = true; last = performance.now(); });
+function cycleWeapon() {
+  const own = ['mano'].concat(adv.espada ? ['espada'] : [], adv.arco ? ['arco'] : []);
+  if (own.length === 1) { toast('Hacé una espada o un arco con el botón "Hacer".', 2400); beep(120, .1); return; }
+  adv.arma = own[(own.indexOf(adv.arma) + 1) % own.length]; showWeapon(); updateAdvUI(); beep(400, .05);
+  toast(adv.arma === 'mano' ? 'Mano' : adv.arma === 'espada' ? 'Espada: tocá un zombie cerca para pegarle' : 'Arco: tocá donde quieras tirar una flecha', 1600);
+}
+$('armaBtn').addEventListener('click', cycleWeapon);
+function updateAdvUI() {
+  let h = ''; for (let i = 0; i < 10; i += 2) h += '<b class="' + (adv.hp >= i + 2 ? 'full' : adv.hp > i ? 'half' : '') + '"></b>';
+  $('hearts').innerHTML = h;
+  $('boneCount').textContent = adv.huesos; $('arrowCount').textContent = adv.flechas;
+  $('clockIcon').textContent = isNight() ? '🌙' : '☀️';
+  $('armaBtn').innerHTML = adv.arma === 'mano' ? '✋<br>Mano' : adv.arma === 'espada' ? '🗡️<br>Espada' : '🏹<br>Arco';
+}
+function setAdv(on, quiet) {
+  ADV = on; document.body.classList.toggle('adv', on);
+  $('craftBtn').innerHTML = on ? 'Hacer<br>cosas' : 'Hacer<br>cubo';
+  try { localStorage.setItem('bichos-modo', on ? 'aventura' : 'pokemon'); } catch (e) { }
+  mobs.slice().forEach(removeMob); arrows.splice(0).forEach(a => scene.remove(a.m));
+  if (on) { if (adv.hp <= 0) adv.hp = 10; spawnTamed(adv.lobos); }
+  else tday = .3;
+  wasNight = isNight(); lastLight = -1; updateSky(); showWeapon(); updateAdvUI();
+  if (!quiet) toast(on ? 'Modo Aventura: de noche salen zombies. Hacé una espada en "Hacer".' : 'Modo Pokémon: siempre de día, tranquilo.', 3200);
+}
+function updateAdv(dt) {
+  tday = (tday + dt / DAYLEN) % 1;
+  hurtT -= dt; sinceHurt += dt;
+  if (sinceHurt > 5 && adv.hp < 10 && (regenT -= dt) <= 0) { regenT = 3; adv.hp = Math.min(10, adv.hp + 1); updateAdvUI(); }
+  const night = isNight();
+  if (night !== wasNight) { wasNight = night; updateAdvUI(); toast(night ? '¡Se hizo de noche! Cuidado con los zombies 🧟' : '¡Amaneció! Los zombies se queman con el sol ☀️', 3200); beep(night ? 196 : 784, .3, 'triangle'); }
+  if (night && (zSpawnT -= dt) <= 0) { zSpawnT = 3.5; if (mobs.filter(m => m.kind === 'zombie').length < 6) { const s = spotAround(14, 26); if (s) makeMob('zombie', s[0], s[1], s[2]); } }
+  if ((wSpawnT -= dt) <= 0) { wSpawnT = 6; if (mobs.filter(m => m.kind === 'wolf' && !m.tamed).length < 3) { const s = spotAround(10, 26, (x, y, z) => nearType(x, y, z, 'arbol')); if (s) makeMob('wolf', s[0], s[1], s[2]); } }
+  mobs.slice().forEach(m => { if (m.alive) updateMob(m, dt); });
+  updateArrows(dt);
 }
 
 /* ================= pantalla completa y horizontal (celular) ================= */
@@ -1015,6 +1339,11 @@ function goFull() {
   } catch (e) { }
 }
 if (TOUCH && canFull) $('fullBtn').hidden = false;
+// si sale de pantalla completa, el próximo toque en el juego la vuelve a pedir
+let fullTry = 0;
+canvas.addEventListener('pointerdown', () => { if (TOUCH && canFull && running && !(document.fullscreenElement || document.webkitFullscreenElement) && performance.now() - fullTry > 4000) { fullTry = performance.now(); goFull(); } });
+const IOS = /iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && !canFull);
+const STANDALONE = navigator.standalone || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
 $('fullBtn').addEventListener('click', goFull);
 // si el celular está parado, pedir que lo giren
 function checkTurn() { $('turnOv').hidden = !(TOUCH && $('title').hidden && innerHeight > innerWidth); }
@@ -1032,12 +1361,18 @@ for (let i = 0; i < 8; i++) spawnWild();
 requestAnimationFrame(frame);
 let hadSave = false; try { hadSave = !!localStorage.getItem(SAVE); } catch (e) { }
 $('loadMsg').textContent = hadSave ? 'Tu isla te está esperando.' : 'Una isla nueva te está esperando.';
-$('playBtn').addEventListener('click', () => {
+function start(aventura) {
   beep(523, .08); setTimeout(() => beep(784, .12), 90);
   goFull();
   $('title').hidden = true; running = true; last = performance.now(); checkTurn();
-  toast(Object.keys(dex).length ? '¡Bienvenido de vuelta!' : 'Buscá Pokémon en el pasto alto y tocalos para atraparlos', 3500);
+  setAdv(aventura, true);
+  if (IOS && !STANDALONE) setTimeout(() => toast('Para jugar en pantalla completa en iPhone: Compartir ⬆️ → "Agregar a inicio"', 5000), 4200);
+  toast(aventura ? (isNight() ? 'Modo Aventura: ¡es de noche! Cuidado con los zombies 🧟' : 'Modo Aventura: hacé una espada en "Hacer" antes de que llegue la noche') : Object.keys(dex).length ? '¡Bienvenido de vuelta!' : 'Buscá Pokémon en el pasto alto y tocalos para atraparlos', 3800);
   save();
-});
+}
+$('playBtn').addEventListener('click', () => start(false));
+$('advBtn').addEventListener('click', () => start(true));
+try { if (localStorage.getItem('bichos-modo') === 'aventura') $('title').classList.add('lastAdv'); } catch (e) { }
+$('switchMode').addEventListener('click', () => { $('dexOv').hidden = true; running = true; last = performance.now(); setAdv(!ADV); save(); });
 window.__game = { get player() { return player; }, get wild() { return wild; }, get followers() { return followers; }, tapAt, throwAt };
 })();

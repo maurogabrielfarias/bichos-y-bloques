@@ -75,7 +75,14 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .logo span{color:var(--accent);display:block;font-size:.6em}
 .how{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;text-align:left;font-weight:800;color:var(--ink);font-size:15px;max-width:34ch}
 .how b{color:var(--accent);font-family:var(--display);font-weight:500}
-#playBtn{font-size:24px;min-width:200px;min-height:64px;font-family:var(--display)}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.mode{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 10px;background:var(--accent);color:var(--accent-ink);border-color:#a86f10;text-align:center}
+.mode i{font-style:normal;font-size:34px;line-height:1}
+.mode strong{font-family:var(--display);font-size:22px;font-weight:700}
+.mode span{font-size:13px;font-weight:800;line-height:1.2}
+.mode.night{background:#2c3a7a;color:#fff;border-color:#141d4a}
+#title.lastAdv #advBtn,#title:not(.lastAdv) #playBtn{box-shadow:0 0 0 3px #fff}
+@media (max-height:430px){#title .card{gap:8px;padding:14px}.logo{font-size:34px}.how{display:none}.mode span{font-size:12px}}
 
 .dex{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;width:100%}
 .mon{position:relative;background:var(--panel-2);border:3px solid #3a5046;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ink);font-family:var(--body)}
@@ -110,6 +117,33 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .mon .tag{position:absolute;top:4px;right:4px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:900;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em}
 .rar{font-size:10px!important;letter-spacing:.08em;text-transform:uppercase;font-weight:900!important}
 [hidden]{display:none!important}
+/* modo aventura */
+.adv-only{display:none!important}
+.adv .adv-only{display:flex!important}
+#hearts{gap:2px}
+#hearts b{display:inline-block;width:14px;height:13px;background:#3a1a1a;clip-path:polygon(50% 100%,0 40%,0 15%,20% 0,50% 18%,80% 0,100% 15%,100% 40%)}
+#hearts b.full{background:#ff3b3b}
+#hearts b.half{background:linear-gradient(90deg,#ff3b3b 50%,#3a1a1a 50%)}
+#armaBtn{grid-column:1;grid-row:1;width:92px;height:56px;font-size:13px;line-height:1.1;flex-direction:column;align-items:center;justify-content:center}
+#hurtFx{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(255,0,0,0) 40%,rgba(220,0,0,.55));opacity:0;z-index:5}
+#hurtFx.on{animation:hurt .5s ease-out}
+@keyframes hurt{0%{opacity:1}100%{opacity:0}}
+.recipes{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;width:100%}
+.recipe{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;background:var(--panel-2);border-color:#3a5046}
+.recipe i{font-style:normal;font-size:30px}
+.recipe strong{font-family:var(--display);font-size:17px;font-weight:500}
+.recipe span{font-size:12px;color:var(--muted);font-weight:700}
+.recipe.off{opacity:.5}
+/* celular horizontal: joystick y botones bien abajo */
+@media (orientation:landscape) and (pointer:coarse){
+  #joy{bottom:calc(var(--sb) + 12px);left:calc(var(--sl) + 20px)}
+  .right{bottom:calc(var(--sb) + 12px)}
+}
+@media (orientation:landscape) and (pointer:coarse) and (max-width:780px){
+  .slot{width:37px;height:37px}.slot canvas{width:22px;height:22px}
+  #modeBtn,#craftBtn,#armaBtn{width:78px;height:46px;font-size:13px}#jumpBtn{width:74px;height:74px}#atkBtn{width:74px;height:48px;font-size:14px}
+  .right{gap:6px}
+}
 /* en la compu */
 .only-desk{display:none}
 .desk .only-desk{display:revert}
@@ -129,6 +163,10 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 <div class="top">
   <div class="chips">
     <div class="chip" title="Cubos atrapadores"><i></i><span id="cubeCount">5</span></div>
+    <div class="chip adv-only" title="Vida" id="hearts"></div>
+    <div class="chip adv-only" title="Hora"><span id="clockIcon">☀️</span></div>
+    <div class="chip adv-only" title="Huesos para amaestrar lobos">🦴<span id="boneCount">0</span></div>
+    <div class="chip adv-only" title="Flechas">➶<span id="arrowCount">0</span></div>
     <div class="chip" title="Gemas de evolución">💎<span id="gemCount">0</span></div>
     <div class="chip" title="Pokémon encontrados"><span class="dot"></span><span id="dexCount">0/33</span></div>
   </div>
@@ -138,18 +176,20 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
 <div id="joy"><div id="knob"></div></div>
 <div class="right">
+  <button id="armaBtn" class="adv-only">✋<br>Mano</button>
   <button id="atkBtn" hidden>¡Ataque!</button>
   <button id="modeBtn">Romper</button>
   <button id="craftBtn">Hacer<br>cubo</button>
   <button id="jumpBtn">Saltar</button>
 </div>
 <div class="hot" id="hot"></div>
+<div id="hurtFx"></div>
 <div class="keys only-desk">
   <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o flechas: caminar<br>
   <kbd>Espacio</kbd> saltar · <kbd>Q</kbd><kbd>E</kbd> girar<br>
   Arrastrá el mouse: mirar · Ruedita: zoom<br>
   Clic: romper / atrapar · Clic derecho: poner<br>
-  <kbd>F</kbd> atacar · <kbd>1</kbd>–<kbd>7</kbd> bloque · <kbd>C</kbd> cubo · <kbd>P</kbd> Pokédex
+  <kbd>F</kbd> atacar · <kbd>X</kbd> arma · <kbd>1</kbd>–<kbd>7</kbd> bloque · <kbd>C</kbd> cubo · <kbd>P</kbd> Pokédex
 </div>
 
 <div class="overlay" id="dexOv" hidden>
@@ -159,6 +199,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
     <div class="dex" id="dexGrid"></div>
     <div class="row">
       <button class="btn primary" id="dexClose">Seguir jugando</button>
+      <button class="btn" id="switchMode">Pasar a modo Aventura 🌙</button>
       <button class="btn" id="resetBtn">Mundo nuevo</button>
     </div>
   </div>
@@ -172,6 +213,23 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
     <p id="newNum"></p>
     <p id="newMsg"></p>
     <button class="btn primary" id="newClose">¡Genial!</button>
+  </div>
+</div>
+
+<div class="overlay" id="craftOv" hidden>
+  <div class="card">
+    <h2>Mesa de trabajo</h2>
+    <p id="craftMsg">Elegí qué hacer.</p>
+    <div class="recipes" id="craftList"></div>
+    <button class="btn primary" id="craftClose">Listo</button>
+  </div>
+</div>
+
+<div class="overlay" id="faintOv" hidden>
+  <div class="card">
+    <h2>¡Te desmayaste!</h2>
+    <p>Los zombies te ganaron esta vez. Volvés a casa con toda la vida y no perdés nada.</p>
+    <button class="btn primary" id="faintBtn">Volver a casa</button>
   </div>
 </div>
 
@@ -194,12 +252,15 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
       <b class="only-desk">Bloques</b><span class="only-desk">Clic rompe · clic derecho pone</span>
       <b class="only-desk">Pokémon</b><span class="only-desk">Hacé clic en un Pokémon para lanzarle un cubo</span>
     </div>
-    <button class="btn primary" id="playBtn">Jugar</button>
+    <div class="modes">
+      <button class="mode" id="playBtn"><i>🌞</i><strong>Modo Pokémon</strong><span>Siempre de día. Explorá, construí y atrapá Pokémon tranquilo.</span></button>
+      <button class="mode night" id="advBtn"><i>🌙</i><strong>Modo Aventura</strong><span>Llega la noche con zombies. Espada, arco y lobos amigos.</span></button>
+    </div>
     <p id="loadMsg">Preparando el mundo…</p>
   </div>
 </div>
 
 <script src="js/three.min.js"></script>
-<script src="js/game.js?v=4"></script>
+<script src="js/game.js?v=6"></script>
 </body>
 </html>
