@@ -1302,11 +1302,12 @@ function updateAdvUI() {
   $('hearts').innerHTML = h;
   $('boneCount').textContent = adv.huesos; $('arrowCount').textContent = adv.flechas;
   $('clockIcon').textContent = isNight() ? '🌙' : '☀️';
-  $('armaBtn').innerHTML = adv.arma === 'mano' ? '✋<br>Mano' : adv.arma === 'espada' ? '🗡️<br>Espada' : '🏹<br>Arco';
+  const br = IOS ? ' ' : '<br>'; // en iPhone el botón va arriba, en una sola línea
+  $('armaBtn').innerHTML = adv.arma === 'mano' ? '✋' + br + 'Mano' : adv.arma === 'espada' ? '🗡️' + br + 'Espada' : '🏹' + br + 'Arco';
 }
 function setAdv(on, quiet) {
   ADV = on; document.body.classList.toggle('adv', on);
-  $('craftBtn').innerHTML = on ? 'Hacer<br>cosas' : 'Hacer<br>cubo';
+  $('craftBtn').innerHTML = IOS ? (on ? '🛠️ Hacer' : '🟫 Hacer cubo') : on ? 'Hacer<br>cosas' : 'Hacer<br>cubo';
   try { localStorage.setItem('bichos-modo', on ? 'aventura' : 'pokemon'); } catch (e) { }
   mobs.slice().forEach(removeMob); arrows.splice(0).forEach(a => scene.remove(a.m));
   if (on) { if (adv.hp <= 0) adv.hp = 10; spawnTamed(adv.lobos); }
@@ -1344,6 +1345,15 @@ let fullTry = 0;
 canvas.addEventListener('pointerdown', () => { if (TOUCH && canFull && running && !(document.fullscreenElement || document.webkitFullscreenElement) && performance.now() - fullTry > 4000) { fullTry = performance.now(); goFull(); } });
 const IOS = /iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && !canFull);
 const STANDALONE = navigator.standalone || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
+// iPhone: menos botones a la derecha para que quede lugar para mirar con el dedo.
+// "Hacer" y el arma pasan arriba, al lado de la Pokédex. (Android y compu quedan igual.)
+if (IOS) {
+  document.body.classList.add('ios');
+  const top = $('bookBtn').parentNode; top.insertBefore($('craftBtn'), $('bookBtn')); top.insertBefore($('armaBtn'), $('bookBtn'));
+  $('craftBtn').innerHTML = '🟫 Hacer cubo';
+  if (!STANDALONE) $('iosTip').hidden = false;
+  $('fullBtn').hidden = true; // Safari de iPhone no deja pantalla completa desde la página
+}
 $('fullBtn').addEventListener('click', goFull);
 // si el celular está parado, pedir que lo giren
 function checkTurn() { $('turnOv').hidden = !(TOUCH && $('title').hidden && innerHeight > innerWidth); }

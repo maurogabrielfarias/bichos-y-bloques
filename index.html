@@ -117,6 +117,15 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .mon .tag{position:absolute;top:4px;right:4px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:900;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em}
 .rar{font-size:10px!important;letter-spacing:.08em;text-transform:uppercase;font-weight:900!important}
 [hidden]{display:none!important}
+/* iPhone: botones más chicos y menos a la derecha */
+#iosTip{background:rgba(74,163,240,.18);border:2px solid var(--place);padding:8px 10px;color:var(--ink)!important;font-size:14px;line-height:1.35}
+#iosTip b{color:var(--accent)}
+.ios .top .row{gap:6px}
+.ios #craftBtn,.ios #armaBtn{width:auto;height:auto;padding:8px 10px;font-size:14px;line-height:1.1;white-space:nowrap}
+.ios .right{grid-template-rows:auto auto auto;gap:6px}
+.ios #modeBtn{grid-column:1;grid-row:3;width:72px;height:44px;font-size:13px}
+.ios #jumpBtn{grid-column:2;grid-row:2 / span 2;width:68px;height:68px;font-size:13px}
+.ios #atkBtn{grid-column:2;grid-row:1;width:68px;height:44px;font-size:13px}
 /* modo aventura */
 .adv-only{display:none!important}
 .adv .adv-only{display:flex!important}
@@ -140,6 +149,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   .right{bottom:calc(var(--sb) + 12px)}
 }
 @media (orientation:landscape) and (pointer:coarse) and (max-width:780px){
+  .ios #modeBtn{width:66px;height:42px}.ios #jumpBtn{width:62px;height:62px}.ios #atkBtn{width:62px;height:42px}
   .slot{width:37px;height:37px}.slot canvas{width:22px;height:22px}
   #modeBtn,#craftBtn,#armaBtn{width:78px;height:46px;font-size:13px}#jumpBtn{width:74px;height:74px}#atkBtn{width:74px;height:48px;font-size:14px}
   .right{gap:6px}
@@ -256,11 +266,12 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
       <button class="mode" id="playBtn"><i>🌞</i><strong>Modo Pokémon</strong><span>Siempre de día. Explorá, construí y atrapá Pokémon tranquilo.</span></button>
       <button class="mode night" id="advBtn"><i>🌙</i><strong>Modo Aventura</strong><span>Llega la noche con zombies. Espada, arco y lobos amigos.</span></button>
     </div>
+    <p id="iosTip" hidden>📲 <b>Pantalla completa en iPhone:</b> en Safari tocá Compartir <span class="share">⬆️</span> → <b>Agregar a inicio</b>, y abrí el juego desde ese ícono.</p>
     <p id="loadMsg">Preparando el mundo…</p>
   </div>
 </div>
 
 <script src="js/three.min.js"></script>
-<script src="js/game.js?v=6"></script>
+<script src="js/game.js?v=7"></script>
 </body>
 </html>
