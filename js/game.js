@@ -5,14 +5,14 @@
 /* ================= constantes ================= */
 const WX = 64, WZ = 64, WY = 30, SEA = 6, CH = 16;
 const SAVE = 'bichos-bloques-3d-v1', MAXP = 99, REACH = 8; // MAXP: pueden salir todos los Pokémon a la vez
-const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, LOG: 5, LEAVES: 6, PLANKS: 7, BRICK: 8, WATER: 9, TALL: 10, FLOWR: 11, FLOWY: 12, BED: 13, GEM: 14 };
-const SOLID = new Uint8Array(16), OPAQUE = new Uint8Array(16), PLANT = new Uint8Array(16);
-[1, 2, 3, 4, 5, 6, 7, 8, 13, 14].forEach(i => SOLID[i] = 1);
-[1, 2, 3, 4, 5, 7, 8, 13, 14].forEach(i => OPAQUE[i] = 1);
+const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, LOG: 5, LEAVES: 6, PLANKS: 7, BRICK: 8, WATER: 9, TALL: 10, FLOWR: 11, FLOWY: 12, BED: 13, GEM: 14, ROAD: 15, ROADL: 16, CURB: 17 };
+const SOLID = new Uint8Array(32), OPAQUE = new Uint8Array(32), PLANT = new Uint8Array(32);
+[1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 15, 16, 17].forEach(i => SOLID[i] = 1);
+[1, 2, 3, 4, 5, 7, 8, 13, 14, 15, 16, 17].forEach(i => OPAQUE[i] = 1);
 [10, 11, 12].forEach(i => PLANT[i] = 1);
 // tile del atlas por bloque: [arriba, costado, abajo]
-const TILES = { 1: [0, 1, 2], 2: [2, 2, 2], 3: [3, 3, 3], 4: [4, 4, 4], 5: [6, 5, 6], 6: [7, 7, 7], 7: [8, 8, 8], 8: [9, 9, 9], 10: [11, 11, 11], 11: [12, 12, 12], 12: [13, 13, 13], 13: [14, 14, 14], 14: [15, 15, 15] };
-const BLOCKCOL = { 1: ['#5fae3f', '#8b5a2f'], 2: ['#8b5a2f', '#6a4220'], 3: ['#8f8f8f', '#6c6c6c'], 4: ['#e4cf8e', '#c9b26c'], 5: ['#6b4423', '#a8804a'], 6: ['#3f9636', '#24621f'], 7: ['#b8864a', '#7d5629'], 8: ['#9c9c9c', '#646464'], 10: ['#4a9a32', '#9be36b'], 11: ['#e8443a', '#3f8a2b'], 12: ['#ffd23f', '#3f8a2b'], 14: ['#5ff2f2', '#c48bff'] };
+const TILES = { 1: [0, 1, 2], 2: [2, 2, 2], 3: [3, 3, 3], 4: [4, 4, 4], 5: [6, 5, 6], 6: [7, 7, 7], 7: [8, 8, 8], 8: [9, 9, 9], 10: [11, 11, 11], 11: [12, 12, 12], 12: [13, 13, 13], 13: [14, 14, 14], 14: [15, 15, 15], 15: [16, 19, 19], 16: [17, 19, 19], 17: [18, 18, 19] };
+const BLOCKCOL = { 1: ['#5fae3f', '#8b5a2f'], 2: ['#8b5a2f', '#6a4220'], 3: ['#8f8f8f', '#6c6c6c'], 4: ['#e4cf8e', '#c9b26c'], 5: ['#6b4423', '#a8804a'], 6: ['#3f9636', '#24621f'], 7: ['#b8864a', '#7d5629'], 8: ['#9c9c9c', '#646464'], 10: ['#4a9a32', '#9be36b'], 11: ['#e8443a', '#3f8a2b'], 12: ['#ffd23f', '#3f8a2b'], 14: ['#5ff2f2', '#c48bff'], 15: ['#3b3d42', '#55575c'], 16: ['#3b3d42', '#f2f2f2'], 17: ['#e0302a', '#f2f2f2'] };
 
 const ITEMS = [
   { id: 'madera', name: 'Madera', tile: 8, block: B.PLANKS },
@@ -23,7 +23,7 @@ const ITEMS = [
   { id: 'flor', name: 'Flor', tile: 12, block: B.FLOWR },
   { id: 'pasto', name: 'Pasto alto', tile: 11, block: B.TALL }
 ];
-const DROP = { 1: 'tierra', 2: 'tierra', 3: 'piedra', 4: 'arena', 5: 'madera', 6: 'hojas', 7: 'madera', 8: 'piedra', 10: 'pasto', 11: 'flor', 12: 'flor' };
+const DROP = { 15: 'piedra', 16: 'piedra', 17: 'piedra', 1: 'tierra', 2: 'tierra', 3: 'piedra', 4: 'arena', 5: 'madera', 6: 'hojas', 7: 'madera', 8: 'piedra', 10: 'pasto', 11: 'flor', 12: 'flor' };
 
 // Pokémon reales: n = número de la Pokédex (las imágenes se cargan de PokeAPI)
 // w = qué tan seguido aparece, c = chance de atraparlo, hab = dónde le gusta estar, s = tamaño
@@ -107,7 +107,7 @@ let toastT;
 function toast(msg, ms) { const t = $('toast'); t.textContent = msg; t.classList.remove('off'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('off'), ms || 2200); }
 
 /* ================= atlas de texturas ================= */
-const atlas = document.createElement('canvas'); atlas.width = atlas.height = 64;
+const atlas = document.createElement('canvas'); atlas.width = 64; atlas.height = 80; // 4 x 5 texturas de 16x16
 (function paintAtlas() {
   const g = atlas.getContext('2d');
   function tile(i, seed, fn) { const r = rng32(seed); g.save(); g.translate((i % 4) * 16, (i >> 2) * 16); g.beginPath(); g.rect(0, 0, 16, 16); g.clip(); fn(r); g.restore(); }
@@ -134,6 +134,12 @@ const atlas = document.createElement('canvas'); atlas.width = atlas.height = 64;
   tile(15, 16, r => { speck(r, '#8f8f8f', ['#7a7a7a', '#a5a5a5', '#6c6c6c'], 120);
     [[2, 2, '#5ff2f2'], [9, 3, '#c48bff'], [5, 8, '#ff7ad9'], [11, 10, '#5ff2f2'], [2, 12, '#c48bff']].forEach(([x, y, c]) => {
       g.fillStyle = '#2a2a4a'; g.fillRect(x - 1, y - 1, 5, 5); g.fillStyle = c; g.fillRect(x, y, 3, 3); g.fillStyle = '#ffffff'; g.fillRect(x, y, 1, 1); }); });
+  // pista: asfalto, asfalto con línea blanca, cordón rojo y blanco, costado
+  const ASF = ['#34363a', '#44464b', '#2e3034'];
+  tile(16, 17, r => speck(r, '#3b3d42', ASF, 90));
+  tile(17, 18, r => { speck(r, '#3b3d42', ASF, 90); g.fillStyle = '#f2f2f2'; g.fillRect(5, 5, 6, 6); });
+  tile(18, 19, () => { for (let k = 0; k < 4; k++) { g.fillStyle = k % 2 ? '#f2f2f2' : '#e0302a'; g.fillRect(k * 4, 0, 4, 16); } });
+  tile(19, 20, r => speck(r, '#5c5e63', ['#4e5055', '#686a6f'], 80));
 })();
 const tileCanvas = i => { const c = document.createElement('canvas'); c.width = c.height = 16; c.getContext('2d').drawImage(atlas, (i % 4) * 16, (i >> 2) * 16, 16, 16, 0, 0, 16, 16); return c; };
 
@@ -251,6 +257,29 @@ function generate(sd) {
     if (rg() < (open ? .016 : .004)) set(x, y, z, B.GEM);
   }
   village = buildVillage(sd);
+  track = buildTrack();
+}
+// pista alrededor de la isla, lejos del pueblo, con subidas suaves (terraplén sobre el agua, túnel en las colinas)
+let track = null;
+function buildTrack() {
+  const cx = WX / 2, cz = WZ / 2;
+  let R = 19;
+  if (village) { const vd = Math.hypot(village.x - cx, village.z - cz), near = vd - 10 - 4.5, far = vd + 10 + 4.5; if (R > near && R < far) R = far <= 26 ? far : near; }
+  if (R < 12 || R > 26) R = clamp(R, 12, 26);
+  const N = 360, hh = new Float32Array(N);
+  for (let i = 0; i < N; i++) { const a = i / N * Math.PI * 2, x = clamp(Math.floor(cx + Math.cos(a) * R), 0, WX - 1), z = clamp(Math.floor(cz + Math.sin(a) * R), 0, WZ - 1); hh[i] = clamp(heights[z * WX + x], SEA + 2, WY - 8); }
+  for (let pass = 0; pass < 3; pass++) { const c = hh.slice(); for (let i = 0; i < N; i++) { let s = 0; for (let k = -10; k <= 10; k++) s += c[(i + k + N) % N]; hh[i] = s / 21; } }
+  for (let pass = 0; pass < 4; pass++) { for (let i = 1; i <= N; i++) hh[i % N] = clamp(hh[i % N], hh[i - 1] - .17, hh[i - 1] + .17); for (let i = N - 2; i >= -1; i--) { const j = (i + N) % N; hh[j] = clamp(hh[j], hh[(j + 1) % N] - .17, hh[(j + 1) % N] + .17); } }
+  for (let z = 0; z < WZ; z++) for (let x = 0; x < WX; x++) {
+    const dx = x + .5 - cx, dz = z + .5 - cz, d = Math.hypot(dx, dz), off = Math.abs(d - R);
+    if (off > 2.6) continue;
+    const i = Math.round(((Math.atan2(dz, dx) / (Math.PI * 2)) + 1) % 1 * N) % N, h = Math.round(hh[i]);
+    const type = off > 2.05 ? B.CURB : off < .55 && i % 24 < 12 ? B.ROADL : B.ROAD;
+    for (let y = 1; y < h; y++) if (!SOLID[get(x, y, z)]) set(x, y, z, B.STONE);
+    set(x, h, z, type);
+    for (let y = h + 1; y <= Math.min(WY - 1, h + 4); y++) set(x, y, z, B.AIR);
+  }
+  return { R, cx, cz, hh, N };
 }
 // pueblo: 3 casitas de madera con techo de ladrillo sobre un terreno plano
 let village = null;
@@ -312,7 +341,7 @@ const FACES = [
 FACES.forEach(f => { f.ax = [0, 1, 2].filter(a => f.n[a] === 0); });
 const AOF = [.42, .62, .8, 1];
 const UVE = .002;
-function uvOf(tile, u, v) { const tx = tile % 4, ty = tile >> 2; return [(tx + UVE + u * (1 - 2 * UVE)) / 4, (3 - ty + UVE + v * (1 - 2 * UVE)) / 4]; }
+function uvOf(tile, u, v) { const tx = tile % 4, ty = tile >> 2; return [(tx + UVE + u * (1 - 2 * UVE)) / 4, (4 - ty + UVE + v * (1 - 2 * UVE)) / 5]; }
 const chunks = {};
 function buildChunk(cx, cz) {
   const P = [], U = [], C = [], I = [], pP = [], pU = [], pC = [], pI = [];
@@ -499,16 +528,16 @@ function newWorld() {
   player.body.p.set(x + .5, y, z + .5); player.body.v.set(0, 0, 0);
 }
 function save() {
-  try { localStorage.setItem(SAVE, JSON.stringify({ seed, edits, p: player.body.p.toArray(), inv, cubes, gems, dex, party, adv, tday, veh: vehicles.map(v => ({ k: v.kind, p: v.body.p.toArray(), y: v.yaw })) })); } catch (e) { }
+  try { localStorage.setItem(SAVE, JSON.stringify({ seed, edits, p: player.body.p.toArray(), inv, cubes, gems, dex, party, adv, tday, veh: vehicles.map(v => ({ k: v.kind, p: v.body.p.toArray(), y: v.yaw })), track: 1 })); } catch (e) { }
 }
-let savedVeh = null;
+let savedVeh = null, savedTrack = false;
 let saveT = null; function saveSoon() { clearTimeout(saveT); saveT = setTimeout(save, 600); }
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE)); if (!s || !s.seed) return false;
     seed = s.seed; generate(seed); edits = s.edits || {};
     for (const k in edits) world[+k] = edits[k];
-    inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; gems = s.gems | 0; dex = {}; if (s.adv) Object.assign(adv, s.adv); if (typeof s.tday === 'number') tday = s.tday; savedVeh = s.veh || null;
+    inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; gems = s.gems | 0; dex = {}; if (s.adv) Object.assign(adv, s.adv); if (typeof s.tday === 'number') tday = s.tday; savedVeh = s.veh || null; savedTrack = !!s.track;
     for (const k in s.dex || {}) { const id = MON[k] ? k : OLDMON[k]; if (id) dex[id] = (dex[id] || 0) + s.dex[k]; }
     party = [...new Set((s.party || []).map(id => MON[id] ? id : OLDMON[id]))].filter(id => dex[id] && MON[id]).slice(0, MAXP);
     player.body.p.fromArray(s.p); if (collides(player.body, player.body.p.x, player.body.p.y, player.body.p.z)) { const [x, y, z] = findSpawn(); player.body.p.set(x + .5, y, z + .5); }
@@ -802,7 +831,7 @@ function voxelRay(o, d, max) {
 }
 function tapAt(cx, cy, forceMode) {
   if (!running) return;
-  const ndc = new THREE.Vector2(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  const ndc = new THREE.Vector2(cx / viewW() * 2 - 1, -(cy / viewH()) * 2 + 1);
   ray.setFromCamera(ndc, camera);
   const objs = wild.filter(c => c.alive && c.state !== 'caught').map(c => c.model).concat(followers.map(c => c.model));
   const hitsC = ray.intersectObjects(objs, true);
@@ -995,7 +1024,9 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; }); // q
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
 
 /* ================= bucle ================= */
-function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+// en iPhone el dibujo ocupa la pantalla entera (100lvh) para que no quede una franja abajo; en el resto, la ventana
+const viewW = () => IOS ? canvas.clientWidth || innerWidth : innerWidth, viewH = () => IOS ? canvas.clientHeight || innerHeight : innerHeight;
+function resize() { renderer.setSize(viewW(), viewH(), false); camera.aspect = viewW() / viewH(); camera.updateProjectionMatrix(); }
 addEventListener('resize', resize);
 
 const camTarget = new THREE.Vector3(), tmp = new THREE.Vector3();
@@ -1557,10 +1588,24 @@ function makeVehicle(kind, x, y, z, yaw) {
 }
 function placeVehicles(saved) {
   vehicles.splice(0).forEach(v => { scene.remove(v.model); scene.remove(v.shadow); });
-  if (saved && saved.length) { saved.forEach(s => makeVehicle(s.k, s.p[0], s.p[1] + .2, s.p[2], s.y)); return; }
+  if (saved && saved.length) {
+    saved.forEach(s => { if (!savedTrack && track && s.k !== 'cohete') return; makeVehicle(s.k, s.p[0], s.p[1] + .2, s.p[2], s.y); });
+    if (savedTrack || !track) return;
+  }
+  // moto y auto en la pista (la parte más cerca del pueblo o tuya)
+  if (track) {
+    const ref = village || player.body.p, a0 = Math.atan2(ref.z - track.cz, ref.x - track.cx);
+    [['moto', 0], ['auto', .16]].forEach(([k, da]) => {
+      if (vehicles.some(v => v.kind === k)) return;
+      const a = a0 + da, i = Math.round(((a / (Math.PI * 2)) + 1) % 1 * track.N) % track.N;
+      makeVehicle(k, track.cx + Math.cos(a) * track.R, Math.round(track.hh[i]) + 1.05, track.cz + Math.sin(a) * track.R, Math.atan2(-Math.sin(a), Math.cos(a)));
+    });
+    if (vehicles.some(v => v.kind === 'cohete')) return;
+  }
   // al lado del pueblo si hay, si no cerca tuyo
   const base = village || player.body.p;
   ['moto', 'auto', 'cohete'].forEach((k, i) => {
+    if (vehicles.some(v => v.kind === k)) return;
     let spot = null;
     for (let t = 0; t < 60 && !spot; t++) {
       const a = (i * 2.1) + t * .37, r = (village ? 11 : 5) + (t % 6), x = Math.floor(base.x + Math.cos(a) * r) + .5, z = Math.floor(base.z + Math.sin(a) * r) + .5;
@@ -1600,6 +1645,7 @@ function exitVehicle() {
 function updateVehicles(dt) {
   vehicles.forEach(v => {
     const b = v.body, r = v.model.userData.rig;
+    if (collides(b, b.p.x, b.p.y, b.p.z)) b.p.y = Math.floor(b.p.y) + 1; // si quedó adentro de un bloque
     if (v !== riding) { b.fly = false; b.v.x *= .9; b.v.z *= .9; moveBody(b, dt); if (b.p.y < SEA + .9 && surfaceY(b.p.x, b.p.z) === null) { b.p.y = SEA + .9; b.v.y = 0; } } // en el agua flota
     else if (v.kind === 'cohete') {
       const { mx, mz, ml } = readMove(), up = jumpHeld || keys.Space;
@@ -1677,7 +1723,7 @@ const STANDALONE = navigator.standalone || matchMedia('(display-mode: fullscreen
 // iPhone: menos botones a la derecha para que quede lugar para mirar con el dedo.
 // "Hacer" y el arma pasan arriba, al lado de la Pokédex. (Android y compu quedan igual.)
 if (IOS) {
-  document.body.classList.add('ios');
+  document.body.classList.add('ios'); document.documentElement.classList.add('iosbg');
   const top = $('bookBtn').parentNode; top.insertBefore($('craftBtn'), $('bookBtn')); top.insertBefore($('armaBtn'), $('bookBtn'));
   $('craftBtn').innerHTML = '🟫 Hacer cubo';
   if (!STANDALONE) $('iosTip').hidden = false;
@@ -1686,7 +1732,7 @@ if (IOS) {
 $('fullBtn').addEventListener('click', goFull);
 // si el celular está parado, pedir que lo giren
 function checkTurn() { $('turnOv').hidden = !(TOUCH && $('title').hidden && innerHeight > innerWidth); }
-addEventListener('resize', checkTurn); addEventListener('orientationchange', () => setTimeout(checkTurn, 300));
+addEventListener('resize', checkTurn); addEventListener('orientationchange', () => { setTimeout(checkTurn, 300); if (IOS) [100, 500, 1000].forEach(t => setTimeout(resize, t)); });
 
 /* ================= arranque ================= */
 resize();

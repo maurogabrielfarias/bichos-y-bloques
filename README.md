@@ -19,7 +19,8 @@ Desde la Pokédex se puede cambiar de modo en cualquier momento.
 
 - **Pueblo:** tres casitas con aldeanos y gallinas. Tocá un aldeano para charlar; a veces te regala cubos, materiales o una gema. En modo Aventura, de noche se meten en sus casas.
 - **Golem gigante:** vive en el pueblo. Tocalo y te cuida: te sigue y aplasta zombies.
-- **Moto, auto y cohete:** están cerca del pueblo. Tocalos (o tecla V) para subirte y manejar con el joystick; *Bajar* para salir. En el cohete, mantené *Subir* (o Espacio) para volar.
+- **Pista:** un circuito de asfalto con cordones rojos y blancos alrededor de la isla, con subidas suaves y túneles.
+- **Moto, auto y cohete:** la moto y el auto empiezan en la pista, el cohete cerca del pueblo. Tocalos (o tecla V) para subirte y manejar con el joystick; *Bajar* para salir. En el cohete, mantené *Subir* (o Espacio) para volar.
 - **Pokémon afuera:** desde la Pokédex podés sacar a todos a la vez; pasean alrededor tuyo. Hasta 10 lobos amigos.
 
 ## Cómo se juega
