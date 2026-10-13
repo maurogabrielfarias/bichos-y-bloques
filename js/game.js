@@ -1714,5 +1714,5 @@ $('playBtn').addEventListener('click', () => start(false));
 $('advBtn').addEventListener('click', () => start(true));
 try { if (localStorage.getItem('bichos-modo') === 'aventura') $('title').classList.add('lastAdv'); } catch (e) { }
 $('switchMode').addEventListener('click', () => { $('dexOv').hidden = true; running = true; last = performance.now(); setAdv(!ADV); save(); });
-window.__game = { get player() { return player; }, get wild() { return wild; }, get followers() { return followers; }, tapAt, throwAt, T: { vehicles, town, get village() { return village; }, enterVehicle, exitVehicle, get riding() { return riding; }, joy, adv, setT(v) { tday = v; }, get mobs() { return mobs; }, makeMob, get party() { return party; }, tapNpc } };
+window.__game = { get player() { return player; }, get wild() { return wild; }, get followers() { return followers; }, tapAt, throwAt };
 })();
