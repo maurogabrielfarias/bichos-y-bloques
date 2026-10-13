@@ -4,7 +4,7 @@
 
 /* ================= constantes ================= */
 const WX = 64, WZ = 64, WY = 30, SEA = 6, CH = 16;
-const SAVE = 'bichos-bloques-3d-v1', MAXP = 3, REACH = 8;
+const SAVE = 'bichos-bloques-3d-v1', MAXP = 99, REACH = 8; // MAXP: pueden salir todos los Pokémon a la vez
 const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, LOG: 5, LEAVES: 6, PLANKS: 7, BRICK: 8, WATER: 9, TALL: 10, FLOWR: 11, FLOWY: 12, BED: 13, GEM: 14 };
 const SOLID = new Uint8Array(16), OPAQUE = new Uint8Array(16), PLANT = new Uint8Array(16);
 [1, 2, 3, 4, 5, 6, 7, 8, 13, 14].forEach(i => SOLID[i] = 1);
@@ -250,6 +250,44 @@ function generate(sd) {
     const open = get(x, y + 1, z) === B.AIR || get(x + 1, y, z) === B.AIR || get(x - 1, y, z) === B.AIR || get(x, y, z + 1) === B.AIR || get(x, y, z - 1) === B.AIR;
     if (rg() < (open ? .016 : .004)) set(x, y, z, B.GEM);
   }
+  village = buildVillage(sd);
+}
+// pueblo: 3 casitas de madera con techo de ladrillo sobre un terreno plano
+let village = null;
+function buildVillage(sd) {
+  const r = rng32(sd ^ 0x71ab3), HX = 8, HZ = 6;
+  let best = null;
+  for (let k = 0; k < 400; k++) {
+    const cx = HX + 2 + Math.floor(r() * (WX - 2 * HX - 4)), cz = HZ + 2 + Math.floor(r() * (WZ - 2 * HZ - 4));
+    const dc = Math.hypot(cx - WX / 2, cz - WZ / 2); if (dc < 9 || dc > 24) continue;
+    let mn = 99, mx = -1, sum = 0, n = 0, bad = false;
+    for (let z = cz - HZ; z <= cz + HZ && !bad; z++) for (let x = cx - HX; x <= cx + HX; x++) { const h = heights[z * WX + x]; if (h <= SEA + 1) { bad = true; break; } mn = Math.min(mn, h); mx = Math.max(mx, h); sum += h; n++; }
+    if (bad) continue;
+    const sc = mx - mn + dc * .05; if (!best || sc < best.sc) best = { sc, cx, cz, h: Math.round(sum / n), range: mx - mn };
+  }
+  if (!best || best.range > 6) return null;
+  const { cx, cz, h } = best;
+  for (let z = cz - HZ - 1; z <= cz + HZ + 1; z++) for (let x = cx - HX - 1; x <= cx + HX + 1; x++) {
+    for (let y = 1; y < WY; y++) { const v = get(x, y, z); if (y < h - 2) { if (!v) set(x, y, z, B.STONE); } else if (y < h) set(x, y, z, B.DIRT); else if (y === h) set(x, y, z, B.GRASS); else set(x, y, z, B.AIR); }
+  }
+  for (let x = cx - HX + 1; x <= cx + HX - 1; x++) set(x, h, cz, B.SAND); // caminito
+  for (let z = cz - HZ + 2; z <= cz + 1; z++) set(cx, h, z, B.SAND);
+  const houses = [];
+  function house(x0, z0, doorZ) { // casa de 5x5; la puerta mira hacia el caminito
+    for (let z = z0; z < z0 + 5; z++) for (let x = x0; x < x0 + 5; x++) {
+      set(x, h, z, B.PLANKS);
+      const edge = x === x0 || x === x0 + 4 || z === z0 || z === z0 + 4, corner = (x === x0 || x === x0 + 4) && (z === z0 || z === z0 + 4);
+      for (let y = h + 1; y <= h + 3; y++) set(x, y, z, edge ? (corner ? B.LOG : B.PLANKS) : B.AIR);
+      set(x, h + 4, z, B.BRICK);
+      if (x > x0 && x < x0 + 4 && z > z0 && z < z0 + 4) set(x, h + 5, z, B.BRICK);
+    }
+    const dz = doorZ > 0 ? z0 + 4 : z0, mx = x0 + 2;
+    set(mx, h + 1, dz, B.AIR); set(mx, h + 2, dz, B.AIR); // puerta
+    set(x0, h + 2, z0 + 2, B.AIR); set(x0 + 4, h + 2, z0 + 2, B.AIR); // ventanas
+    houses.push({ door: [mx + .5, h + 1, dz + .5 + doorZ * 1.2] });
+  }
+  house(cx - 7, cz - 6, 1); house(cx + 3, cz - 6, 1); house(cx - 2, cz + 2, -1);
+  return { x: cx + .5, y: h + 1, z: cz + .5, houses };
 }
 function surfaceY(x, z) { // altura de los pies sobre suelo sólido; null si es agua
   x = Math.floor(x); z = Math.floor(z);
@@ -461,15 +499,16 @@ function newWorld() {
   player.body.p.set(x + .5, y, z + .5); player.body.v.set(0, 0, 0);
 }
 function save() {
-  try { localStorage.setItem(SAVE, JSON.stringify({ seed, edits, p: player.body.p.toArray(), inv, cubes, gems, dex, party, adv, tday })); } catch (e) { }
+  try { localStorage.setItem(SAVE, JSON.stringify({ seed, edits, p: player.body.p.toArray(), inv, cubes, gems, dex, party, adv, tday, veh: vehicles.map(v => ({ k: v.kind, p: v.body.p.toArray(), y: v.yaw })) })); } catch (e) { }
 }
+let savedVeh = null;
 let saveT = null; function saveSoon() { clearTimeout(saveT); saveT = setTimeout(save, 600); }
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE)); if (!s || !s.seed) return false;
     seed = s.seed; generate(seed); edits = s.edits || {};
     for (const k in edits) world[+k] = edits[k];
-    inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; gems = s.gems | 0; dex = {}; if (s.adv) Object.assign(adv, s.adv); if (typeof s.tday === 'number') tday = s.tday;
+    inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; gems = s.gems | 0; dex = {}; if (s.adv) Object.assign(adv, s.adv); if (typeof s.tday === 'number') tday = s.tday; savedVeh = s.veh || null;
     for (const k in s.dex || {}) { const id = MON[k] ? k : OLDMON[k]; if (id) dex[id] = (dex[id] || 0) + s.dex[k]; }
     party = [...new Set((s.party || []).map(id => MON[id] ? id : OLDMON[id]))].filter(id => dex[id] && MON[id]).slice(0, MAXP);
     player.body.p.fromArray(s.p); if (collides(player.body, player.body.p.x, player.body.p.y, player.body.p.z)) { const [x, y, z] = findSpawn(); player.body.p.set(x + .5, y, z + .5); }
@@ -587,13 +626,17 @@ function updateWild(c, dt, now) {
 }
 function updateFollower(c, i, dt, now) {
   if (c.state === 'emerge') { c.t -= dt; if (c.t <= 0) c.state = 'follow'; }
-  const leader = i === 0 ? player.body.p : followers[i - 1].body.p;
-  const d = Math.hypot(leader.x - c.body.p.x, leader.z - c.body.p.z);
-  if (d > 16 || leader.y - c.body.p.y > 6) { c.body.p.set(leader.x - Math.sin(player.yaw) * 1.2, leader.y + 1, leader.z - Math.cos(player.yaw) * 1.2); c.body.v.set(0, 0, 0); }
+  // pasean alrededor tuyo (no pegados): cada uno elige un lugarcito cerca y lo va cambiando
+  const p = player.body.p, d = Math.hypot(p.x - c.body.p.x, p.z - c.body.p.z);
+  if (d > 24 || p.y - c.body.p.y > 8) { const a = Math.random() * 6.28, tx = p.x + Math.cos(a) * 4, tz = p.z + Math.sin(a) * 4; c.body.p.set(tx, (surfaceY(tx, tz) || p.y) + .5, tz); c.body.v.set(0, 0, 0); c.roamT = 0; }
+  c.roamT = (c.roamT || 0) - dt;
+  if (!c.roam || c.roamT <= 0) { const a = Math.random() * 6.28, r = 3 + Math.random() * 4 + Math.min(i, 12) * .25; c.roam = { x: Math.cos(a) * r, z: Math.sin(a) * r }; c.roamT = 3 + Math.random() * 5; }
+  const gx = p.x + c.roam.x, gz = p.z + c.roam.z, gd = Math.hypot(gx - c.body.p.x, gz - c.body.p.z);
+  if (!c.body.fly && surfaceY(gx, gz) === null) c.roamT = 0; // ese lugar es agua: elegir otro
   let dx = 0, dz = 0;
-  if (d > 1.7 && c.state !== 'emerge') { dx = (leader.x - c.body.p.x) / d; dz = (leader.z - c.body.p.z) / d; }
-  else if (d <= 1.7) c.targetYaw = Math.atan2(player.body.p.x - c.body.p.x, player.body.p.z - c.body.p.z);
-  steer(c, dx, dz, Math.min(6.2, 1.5 + d * 1.4), dt);
+  if (gd > .7 && c.state !== 'emerge') { dx = (gx - c.body.p.x) / gd; dz = (gz - c.body.p.z) / gd; }
+  else if (Math.random() < dt * .5) c.targetYaw = Math.atan2(p.x - c.body.p.x, p.z - c.body.p.z);
+  steer(c, dx, dz, d > 9 ? Math.min(7, 2 + d * .5) : Math.min(2.2, .8 + gd * .6), dt);
   if (c.body.fly) flyHover(c, dt);
   else if (!dx && !dz && c.body.ground && Math.random() < dt * .25) c.body.v.y = 4;
   moveBody(c.body, dt);
@@ -605,7 +648,7 @@ function addFollower(id, from) {
 }
 function rebuildFollowers() {
   followers.splice(0).forEach(removeCreature);
-  party.forEach((id, i) => { const p = player.body.p; addFollower(id, new THREE.Vector3(p.x - Math.sin(player.yaw) * (1 + i), p.y + .5, p.z - Math.cos(player.yaw) * (1 + i))); });
+  party.forEach((id, i) => { const p = player.body.p, a = i * 2.4, r = 2.5 + (i % 4); addFollower(id, new THREE.Vector3(p.x + Math.cos(a) * r, (surfaceY(p.x + Math.cos(a) * r, p.z + Math.sin(a) * r) || p.y) + .5, p.z + Math.sin(a) * r)); });
 }
 
 /* ================= partículas ================= */
@@ -708,11 +751,11 @@ function attack() {
   if (!running || catching || atkCD > 0) return;
   if (!followers.length) { toast('Necesitás Pokémon que te sigan para atacar.'); beep(120, .1); return; }
   const z = ADV && nearestZombie(player.body.p, 12);
-  if (z) { atkCD = 1.1; followers.forEach((f, i) => setTimeout(() => beamMob(f, z), i * 200)); return; }
+  if (z) { atkCD = 1.1; followers.slice(0, 6).forEach((f, i) => setTimeout(() => beamMob(f, z), i * 160)); return; }
   const t = attackTarget(); if (!t) { toast('No hay ningún Pokémon salvaje cerca.'); beep(120, .1); return; }
   atkCD = 1.1;
   player.yaw = Math.atan2(t.body.p.x - player.body.p.x, t.body.p.z - player.body.p.z);
-  followers.forEach((f, i) => setTimeout(() => beam(f, t), i * 200));
+  followers.slice(0, 6).forEach((f, i) => setTimeout(() => beam(f, t), i * 160)); // atacan hasta 6 a la vez
 }
 function beamMob(f, z) {
   if (!z.alive || !followers.includes(f)) return;
@@ -765,6 +808,7 @@ function tapAt(cx, cy, forceMode) {
   const hitsC = ray.intersectObjects(objs, true);
   const hv = voxelRay(ray.ray.origin, ray.ray.direction, 40);
   const hitC = hitsC.length && (!hv || hitsC[0].distance < hv.t + .3) ? hitsC[0] : null;
+  if (townTap(ray, hv, hitC)) return; // aldeanos, gallinas, golem y vehículos
   if (advTap(ray, hv, hitC)) return; // zombies, lobos y arco (modo aventura)
   if (hitC) {
     const c = hitsC[0].object.userData.creature;
@@ -832,7 +876,7 @@ let jumpHeld = false;
 const jb = $('jumpBtn');
 jb.addEventListener('pointerdown', e => { e.preventDefault(); jumpHeld = true; doJump(); });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => jb.addEventListener(ev, () => { jumpHeld = false; }));
-function doJump() { const b = player.body; if (b.ground) { b.v.y = b.jumpV; b.ground = false; beep(260, .05, 'triangle'); } else if (b.inWater) b.v.y = 5; }
+function doJump() { if (riding) return; const b = player.body; if (b.ground) { b.v.y = b.jumpV; b.ground = false; beep(260, .05, 'triangle'); } else if (b.inWater) b.v.y = 5; }
 
 // cartel de "¡Pokémon nuevo!" con la imagen grande
 let newOpen = false;
@@ -876,20 +920,21 @@ function renderDex() {
     });
     if (got) d.addEventListener('click', () => {
       if (f) party = party.filter(id => id !== m.id);
-      else if (party.length >= MAXP) { $('dexSum').textContent = 'Solo pueden seguirte ' + MAXP + ' a la vez. Tocá uno que te sigue para que descanse.'; beep(120, .1); return; }
       else party.push(m.id);
       rebuildFollowers(); save(); beep(f ? 300 : 600, .08); renderDex();
     });
     grid.appendChild(d);
   });
   const n = MONS.filter(m => dex[m.id]).length;
-  $('dexSum').textContent = (n === MONS.length ? '¡Los encontraste a todos! ' : 'Encontraste ' + n + ' de ' + MONS.length + '. ') + (n ? 'Tocá un Pokémon para que te siga (hasta ' + MAXP + ').' : 'Buscalos caminando por la isla.') + ' Gemas: ' + gems + ' 💎';
+  $('dexSum').textContent = (n === MONS.length ? '¡Los encontraste a todos! ' : 'Encontraste ' + n + ' de ' + MONS.length + '. ') + (n ? 'Tocá un Pokémon para que salga o descanse.' : 'Buscalos caminando por la isla.') + ' Gemas: ' + gems + ' 💎';
 }
+$('allOut').addEventListener('click', () => { party = [...MONS].sort((a, b) => a.n - b.n).filter(m => dex[m.id]).map(m => m.id); rebuildFollowers(); save(); beep(700, .1); renderDex(); });
+$('allIn').addEventListener('click', () => { party = []; rebuildFollowers(); save(); beep(300, .1); renderDex(); });
 $('bookBtn').addEventListener('click', () => { if (!running || newOpen) return; running = false; resetArm = false; $('resetBtn').textContent = 'Mundo nuevo'; renderDex(); $('dexOv').hidden = false; });
 $('dexClose').addEventListener('click', () => { $('dexOv').hidden = true; running = true; last = performance.now(); });
 $('resetBtn').addEventListener('click', () => {
   if (!resetArm) { resetArm = true; $('resetBtn').textContent = '¿Seguro? Tocá otra vez'; return; }
-  wild.splice(0).forEach(removeCreature); newWorld(); buildAll(); rebuildFollowers(); updateUI(); save();
+  exitVehicle(); wild.splice(0).forEach(removeCreature); newWorld(); buildAll(); spawnTown(); placeVehicles(null); rebuildFollowers(); updateUI(); save();
   $('dexOv').hidden = true; running = true; last = performance.now(); toast('¡Isla nueva! Buscá Pokémon en el pasto alto.', 3000);
 });
 
@@ -938,6 +983,7 @@ addEventListener('keydown', e => {
   else if (e.code === 'KeyR' || e.code === 'Tab') { e.preventDefault(); setMode(mode === 'break' ? 'place' : 'break'); updateUI(); }
   else if (e.code === 'KeyC') ADV ? openCraft() : craft();
   else if (e.code === 'KeyX' && ADV) cycleWeapon();
+  else if (e.code === 'KeyV') { if (riding) exitVehicle(); else { const v = vehicles.find(v => v.body.p.distanceTo(player.body.p) < 4.5); if (v) enterVehicle(v); else toast('No hay ningún vehículo cerca.'); } }
   else if (e.code === 'KeyF') attack();
   else if (e.code === 'KeyL' || e.code === 'KeyP') $('bookBtn').click();
   else if (/^Digit[1-7]$/.test(e.code)) { sel = +e.code.slice(5) - 1; setMode('place'); updateUI(); toast(ITEMS[sel].name, 900); }
@@ -986,8 +1032,9 @@ function updateCamera(dt) {
   const b = player.body;
   camTarget.lerp(tmp.set(b.p.x, b.p.y + 1.35, b.p.z), Math.min(1, dt * 10));
   const dir = new THREE.Vector3(Math.sin(camYaw) * Math.cos(camPitch), Math.sin(camPitch), Math.cos(camYaw) * Math.cos(camPitch));
-  let want = camDist;
-  for (let s = .5; s <= camDist; s += .25) {
+  const cd = camDist + (riding ? riding.V.cam : 0);
+  let want = cd;
+  for (let s = .5; s <= cd; s += .25) {
     const p = tmp.copy(camTarget).addScaledVector(dir, s);
     if (SOLID[get(Math.floor(p.x), Math.floor(p.y), Math.floor(p.z))]) { want = Math.max(1.4, s - .45); break; }
   }
@@ -1000,7 +1047,9 @@ let last = performance.now(), spawnT = 0, atkUiT = 0;
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (running) {
-    updatePlayer(dt, now);
+    if (!riding) updatePlayer(dt, now);
+    updateVehicles(dt);
+    town.forEach(n => updateNpc(n, dt));
     followers.forEach((c, i) => updateFollower(c, i, dt, now));
     for (let i = wild.length - 1; i >= 0; i--) { const c = wild[i]; if (!c.alive) { wild.splice(i, 1); continue; } updateWild(c, dt, now); if (c.alive && c.state !== 'caught' && c.body.p.distanceTo(player.body.p) > 42) { removeCreature(c); wild.splice(i, 1); } }
     if (atkCD > 0) atkCD -= dt;
@@ -1155,6 +1204,7 @@ function hurtPlayer(d, from) {
   if (adv.hp <= 0) faint();
 }
 function faint() {
+  exitVehicle();
   faintOpen = true; running = false; $('faintOv').hidden = false; beep(220, .3, 'triangle'); setTimeout(() => beep(160, .4, 'triangle'), 250);
 }
 $('faintBtn').addEventListener('click', () => {
@@ -1194,9 +1244,15 @@ function updateMob(m, dt) {
   } else {
     const z = nearestZombie(p, 12);
     if (z) { walkTo(m, z.body.p.x, z.body.p.z, 5.2, dt); if (z.body.p.distanceTo(b.p) < 1.5 && m.atkT <= 0) { m.atkT = .8; hurtMob(z, 3, b.p); } }
-    else if (d > 2.6) walkTo(m, p.x, p.z, Math.min(5.8, 1.5 + d * 1.2), dt);
-    else { b.v.x *= .8; b.v.z *= .8; m.tyaw = Math.atan2(p.x - b.p.x, p.z - b.p.z); }
-    if (d > 20 || p.y - b.p.y > 6) { b.p.set(p.x - Math.sin(player.yaw) * 1.5, p.y + 1, p.z - Math.cos(player.yaw) * 1.5); b.v.set(0, 0, 0); }
+    else {
+      // pasean alrededor tuyo, igual que los Pokémon
+      m.roamT = (m.roamT || 0) - dt;
+      if (!m.roam || m.roamT <= 0) { const a = Math.random() * 6.28, r = 3 + Math.random() * 3.5; m.roam = { x: Math.cos(a) * r, z: Math.sin(a) * r }; m.roamT = 3 + Math.random() * 4; }
+      const gx = p.x + m.roam.x, gz = p.z + m.roam.z, gd = Math.hypot(gx - b.p.x, gz - b.p.z);
+      if (gd > .8) walkTo(m, gx, gz, d > 9 ? Math.min(6.5, 2 + d * .5) : Math.min(2.4, 1 + gd * .6), dt);
+      else { b.v.x *= .8; b.v.z *= .8; if (Math.random() < dt) m.tyaw = Math.atan2(p.x - b.p.x, p.z - b.p.z); }
+    }
+    if (d > 24 || p.y - b.p.y > 8) { const a = Math.random() * 6.28, tx = p.x + Math.cos(a) * 3, tz = p.z + Math.sin(a) * 3; b.p.set(tx, (surfaceY(tx, tz) || p.y) + .3, tz); b.v.set(0, 0, 0); }
   }
   // no caminar al agua ni a precipicios (salvo los amaestrados que siguen)
   if (!m.tamed && (b.v.x || b.v.z)) { const l = Math.hypot(b.v.x, b.v.z) || 1, sy = surfaceY(b.p.x + b.v.x / l * .7, b.p.z + b.v.z / l * .7); if (sy === null || sy < b.p.y - 2.5) { b.v.x = -b.v.x; b.v.z = -b.v.z; m.dir.multiplyScalar(-1); } }
@@ -1246,7 +1302,7 @@ function advTap(rayc, hv, hitC) {
       if (m.tamed) { hearts(m.body.p); m.body.v.y = 4; beep(880, .08, 'sine'); return true; }
       if (d > 5) { toast('Acercate al lobo.'); return true; }
       if (adv.huesos < 1) { toast('Los lobos se amaestran con huesos 🦴. Los zombies los sueltan de noche.', 3000); return true; }
-      if (tamedWolves().length >= 3) { toast('Ya tenés 3 lobos amigos.'); return true; }
+      if (tamedWolves().length >= 10) { toast('Ya tenés 10 lobos amigos.'); return true; }
       adv.huesos--; player.throwT = .3;
       if (Math.random() < .45) { m.tamed = true; m.model.userData.rig.collar.visible = true; adv.lobos = tamedWolves().length; hearts(m.body.p); hearts(m.body.p); toast('¡El lobo ahora es tu amigo! Te va a cuidar de los zombies.', 3000); [660, 880, 1100].forEach((f, i) => setTimeout(() => beep(f, .1, 'sine'), i * 90)); }
       else { for (let i = 0; i < 6; i++) particle(m.body.p.clone().add(new THREE.Vector3(0, 1, 0)), new THREE.Vector3((Math.random() - .5), 1.5, (Math.random() - .5)), '#888', .1, .7, 0); toast('El lobo se comió el hueso pero todavía no confía. Probá con otro.', 2600); beep(300, .1); }
@@ -1327,6 +1383,279 @@ function updateAdv(dt) {
   updateArrows(dt);
 }
 
+/* ================= pueblo: aldeanos, gallinas y el golem gigante ================= */
+const town = [];
+function makeVillager(k) {
+  const g = new THREE.Group(), r = {}, ROBE = ['#7a4a2a', '#4a6a3a', '#5a4a8a', '#8a3a3a'][k % 4], SK = '#d9a07a';
+  r.legL = new THREE.Group(); r.legL.position.set(-.12, .5, 0); g.add(r.legL); bx(r.legL, .22, .5, .24, '#3a2a1a', 0, -.25, 0);
+  r.legR = new THREE.Group(); r.legR.position.set(.12, .5, 0); g.add(r.legR); bx(r.legR, .22, .5, .24, '#3a2a1a', 0, -.25, 0);
+  bx(g, .54, .8, .34, ROBE, 0, .9, 0); bx(g, .62, .22, .3, ROBE, 0, 1.0, .2); // brazos cruzados
+  bx(g, .5, .5, .46, SK, 0, 1.55, 0); bx(g, .12, .22, .12, '#c08060', 0, 1.42, .28); // cabeza y narizota
+  bx(g, .52, .1, .48, '#5a3a20', 0, 1.82, 0);
+  [-1, 1].forEach(s => { bx(g, .08, .06, .02, '#ffffff', s * .12, 1.6, .235); bx(g, .04, .06, .02, '#2a5a2a', s * .12, 1.6, .245); });
+  bx(g, .54, .06, .03, '#2a1a10', 0, 1.7, .235); // cejas
+  g.userData.rig = r; return g;
+}
+function makeChicken() {
+  const g = new THREE.Group(), r = {};
+  bx(g, .34, .3, .44, '#f6f6f2', 0, .38, 0);
+  r.head = bx(g, .2, .26, .18, '#f6f6f2', 0, .62, .22); bx(g, .12, .06, .1, '#f2a020', 0, .6, .34); bx(g, .06, .1, .04, '#e0302a', 0, .53, .32); bx(g, .08, .08, .08, '#e0302a', 0, .78, .22);
+  [-1, 1].forEach(s => bx(g, .02, .04, .04, '#111', s * .1, .66, .3));
+  r.wingL = bx(g, .04, .2, .3, '#e6e6e0', -.19, .4, 0); r.wingR = bx(g, .04, .2, .3, '#e6e6e0', .19, .4, 0);
+  r.legL = new THREE.Group(); r.legL.position.set(-.07, .24, 0); g.add(r.legL); bx(r.legL, .04, .24, .04, '#f2a020', 0, -.12, 0);
+  r.legR = new THREE.Group(); r.legR.position.set(.07, .24, 0); g.add(r.legR); bx(r.legR, .04, .24, .04, '#f2a020', 0, -.12, 0);
+  g.userData.rig = r; return g;
+}
+function makeGolem() {
+  const g = new THREE.Group(), r = {}, IR = '#d6d0c4', IR2 = '#b8b0a2', VI = '#4a8a2a';
+  r.legL = new THREE.Group(); r.legL.position.set(-.3, 1.0, 0); g.add(r.legL); bx(r.legL, .42, 1.0, .46, IR2, 0, -.5, 0);
+  r.legR = new THREE.Group(); r.legR.position.set(.3, 1.0, 0); g.add(r.legR); bx(r.legR, .42, 1.0, .46, IR2, 0, -.5, 0);
+  bx(g, .8, .3, .5, IR2, 0, 1.1, 0); bx(g, 1.4, .95, .8, IR, 0, 1.75, 0);
+  bx(g, .3, .5, .05, VI, -.35, 1.7, .41); bx(g, .2, .3, .05, VI, .4, 1.9, .41); bx(g, .05, .5, .3, VI, .71, 1.6, .1);
+  r.armL = new THREE.Group(); r.armL.position.set(-.85, 2.1, 0); g.add(r.armL); bx(r.armL, .32, 1.6, .4, IR, 0, -.8, 0);
+  r.armR = new THREE.Group(); r.armR.position.set(.85, 2.1, 0); g.add(r.armR); bx(r.armR, .32, 1.6, .4, IR, 0, -.8, 0);
+  bx(g, .56, .6, .56, IR, 0, 2.5, .05); bx(g, .14, .26, .12, IR2, 0, 2.38, .38); bx(g, .5, .08, .1, '#8a8478', 0, 2.62, .34);
+  [-1, 1].forEach(s => bx(g, .1, .08, .02, '#7a1a1a', s * .14, 2.55, .335));
+  g.userData.rig = r; return g;
+}
+function makeNpc(kind, x, y, z, k) {
+  const n = { kind, k, model: kind === 'aldeano' ? makeVillager(k) : kind === 'gallina' ? makeChicken() : makeGolem(),
+    body: newBody(kind === 'golem' ? .6 : kind === 'gallina' ? .2 : .3, kind === 'golem' ? 2.8 : kind === 'gallina' ? .6 : 1.9),
+    yaw: Math.random() * 6, t: 0, dir: new THREE.Vector3(), phase: 0, atkT: 0, gift: 0, home: k };
+  n.body.p.set(x, y, z); n.body.jumpV = kind === 'golem' ? 9 : 7.5;
+  n.model.traverse(o => { o.userData.npc = n; }); scene.add(n.model); n.shadow = makeShadow(kind === 'golem' ? 1.8 : kind === 'gallina' ? .5 : .9);
+  town.push(n); return n;
+}
+function spawnTown() {
+  town.splice(0).forEach(n => { scene.remove(n.model); scene.remove(n.shadow); });
+  if (!village) return;
+  const v = village, rr = () => (Math.random() - .5) * 8;
+  for (let i = 0; i < 4; i++) makeNpc('aldeano', v.x + rr(), v.y + .1, v.z + (Math.random() - .5) * 3, i);
+  for (let i = 0; i < 5; i++) makeNpc('gallina', v.x + rr() * 1.4, v.y + .1, v.z + (Math.random() - .5) * 6, i);
+  const p = adv.golem ? player.body.p : v;
+  makeNpc('golem', p.x + 2, (surfaceY(p.x + 2, p.z + 2) || v.y) + .1, p.z + 2, 0);
+}
+const golem = () => town.find(n => n.kind === 'golem');
+function npcWalk(n, tx, tz, speed, dt) {
+  const dx = tx - n.body.p.x, dz = tz - n.body.p.z, d = Math.hypot(dx, dz) || 1, k = Math.min(1, dt * 6);
+  n.body.v.x += (dx / d * speed - n.body.v.x) * k; n.body.v.z += (dz / d * speed - n.body.v.z) * k; n.tyaw = Math.atan2(dx, dz);
+}
+function npcWander(n, cx, cz, rad, speed, dt) {
+  if (n.t <= 0) { n.t = 2 + Math.random() * 3; if (Math.random() < .35) n.dir.set(0, 0, 0); else { const a = Math.random() * 6.28; n.dir.set(Math.cos(a), 0, Math.sin(a)); } if (Math.hypot(n.body.p.x - cx, n.body.p.z - cz) > rad) n.dir.set(cx - n.body.p.x, 0, cz - n.body.p.z).normalize(); }
+  if (n.dir.x || n.dir.z) npcWalk(n, n.body.p.x + n.dir.x, n.body.p.z + n.dir.z, speed, dt); else { n.body.v.x *= .8; n.body.v.z *= .8; }
+}
+const PHRASES = ['¡Hola, explorador!', '¡Qué lindos tus Pokémon!', 'Hmmm… hmm.', '¡Cuidado con los zombies de noche!', '¿Viste el cohete? ¡Vuela altísimo!', 'Las gallinas se escaparon otra vez…', 'El golem nos cuida. ¡Es muy fuerte!'];
+function updateNpc(n, dt) {
+  const b = n.body, p = player.body.p, d = Math.hypot(p.x - b.p.x, p.z - b.p.z);
+  if (collides(b, b.p.x, b.p.y, b.p.z)) b.p.y = Math.floor(b.p.y) + 1;
+  n.t -= dt; n.atkT -= dt;
+  if (n.kind === 'aldeano') {
+    const h = village && village.houses[n.k % village.houses.length];
+    if (ADV && isNight() && h) { // de noche se van a dormir a su casita
+      if (!n.inside) { npcWalk(n, h.door[0], h.door[2], 1.8, dt); if (Math.hypot(h.door[0] - b.p.x, h.door[2] - b.p.z) < 1.3 || n.t < -25) { n.inside = true; n.model.visible = false; n.shadow.visible = false; } }
+      else return;
+    } else {
+      if (n.inside) { n.inside = false; n.model.visible = true; if (h) b.p.set(h.door[0], h.door[1] + .1, h.door[2]); }
+      if (d < 3) { b.v.x *= .7; b.v.z *= .7; n.tyaw = Math.atan2(p.x - b.p.x, p.z - b.p.z); n.t = Math.max(n.t, .5); } // se queda mirándote
+      else if (village) npcWander(n, village.x, village.z, 8, 1.1, dt);
+    }
+  } else if (n.kind === 'gallina') {
+    if (village) npcWander(n, village.x, village.z, 10, .9, dt);
+    if (b.ground && (n.dir.x || n.dir.z) && Math.random() < dt * .6) b.v.y = 3;
+  } else { // golem
+    const guard = adv.golem, z = ADV && nearestZombie(guard ? p : b.p, guard ? 16 : 12);
+    if (z) {
+      npcWalk(n, z.body.p.x, z.body.p.z, 3.4, dt);
+      if (z.body.p.distanceTo(b.p) < 2.3 && n.atkT <= 0) { n.atkT = 1.3; n.swing = .5; hurtMob(z, 8, b.p); z.body.v.y = 11; beep(90, .2, 'square', .08); }
+    } else if (guard) {
+      if (d > 32) { const tx = p.x + 3, tz = p.z + 3; b.p.set(tx, (surfaceY(tx, tz) || p.y) + .2, tz); b.v.set(0, 0, 0); }
+      n.roamT = (n.roamT || 0) - dt;
+      if (!n.roam || n.roamT <= 0) { const a = Math.random() * 6.28, r = 4 + Math.random() * 3; n.roam = { x: Math.cos(a) * r, z: Math.sin(a) * r }; n.roamT = 4 + Math.random() * 4; }
+      const gx = p.x + n.roam.x, gz = p.z + n.roam.z, gd = Math.hypot(gx - b.p.x, gz - b.p.z);
+      if (gd > 1) npcWalk(n, gx, gz, d > 10 ? 4.5 : 1.8, dt); else { b.v.x *= .8; b.v.z *= .8; }
+    } else if (village) npcWander(n, village.x, village.z, 9, 1, dt);
+  }
+  // no meterse al agua
+  if (b.v.x || b.v.z) { const l = Math.hypot(b.v.x, b.v.z) || 1, sy = surfaceY(b.p.x + b.v.x / l * .8, b.p.z + b.v.z / l * .8); if (sy === null) { b.v.x = -b.v.x; b.v.z = -b.v.z; n.dir.multiplyScalar(-1); } }
+  moveBody(b, dt);
+  if (n.tyaw !== undefined) n.yaw = angLerp(n.yaw, n.tyaw, Math.min(1, dt * 6));
+  n.model.position.copy(b.p); n.model.rotation.y = n.yaw;
+  const r = n.model.userData.rig, sp = Math.hypot(b.v.x, b.v.z); n.phase += dt * sp * (n.kind === 'gallina' ? 6 : n.kind === 'golem' ? 1.6 : 2.6);
+  const sw = Math.sin(n.phase) * Math.min(1, sp / 1.5) * .6;
+  r.legL.rotation.x = sw; r.legR.rotation.x = -sw;
+  if (n.kind === 'golem') { n.swing = Math.max(0, (n.swing || 0) - dt); const up = n.swing > 0 ? -2.2 * Math.sin(n.swing / .5 * Math.PI) : 0; r.armL.rotation.x = -sw * .6 + up; r.armR.rotation.x = sw * .6 + up; }
+  if (n.kind === 'gallina') { const f = !b.ground ? Math.sin(performance.now() * .04) * .8 : 0; r.wingL.rotation.z = f; r.wingR.rotation.z = -f; r.head.rotation.x = sp < .2 && Math.sin(performance.now() * .003 + n.k) > .7 ? .6 : 0; }
+  placeShadow(n.shadow, b.p, n.kind === 'golem' ? 1.8 : n.kind === 'gallina' ? .5 : .9);
+}
+function tapNpc(n) {
+  const d = n.body.p.distanceTo(player.body.p);
+  if (n.kind === 'gallina') { n.body.v.y = 4.5; n.dir.set(Math.random() - .5, 0, Math.random() - .5).normalize(); n.t = 1.5; beep(1100, .05, 'square', .04); setTimeout(() => beep(900, .07, 'square', .04), 70); toast('¡Cocorocó! 🐔', 1000); return; }
+  if (d > 7) { toast('Acercate más.'); return; }
+  if (n.kind === 'aldeano') {
+    hearts(n.body.p.clone().add(new THREE.Vector3(0, 1, 0))); beep(330, .08, 'triangle'); setTimeout(() => beep(260, .1, 'triangle'), 90);
+    if (performance.now() - n.gift > 90000) {
+      n.gift = performance.now(); const q = Math.random();
+      if (q < .5) { cubes += 2; toast('Aldeano: "¡Hola! Tomá, 2 cubos atrapadores."', 2600); }
+      else if (q < .75) { inv.madera += 3; inv.piedra += 3; toast('Aldeano: "Tomá madera y piedra para construir."', 2600); }
+      else if (q < .9 && ADV) { adv.flechas += 6; toast('Aldeano: "Para la noche: 6 flechas."', 2600); }
+      else { gems++; toast('Aldeano: "¡Encontré esta gema 💎! Te la regalo."', 2600); }
+      updateUI(); updateAdvUI(); saveSoon();
+    } else toast('Aldeano: "' + PHRASES[Math.floor(Math.random() * PHRASES.length)] + '"', 2200);
+    return;
+  }
+  // golem
+  hearts(n.body.p.clone().add(new THREE.Vector3(0, 2, 0)));
+  if (!adv.golem) { adv.golem = true; toast('¡El golem gigante te va a cuidar! Te sigue y aplasta zombies.', 3200); [196, 262, 330].forEach((f, i) => setTimeout(() => beep(f, .18, 'triangle'), i * 120)); }
+  else { inv.flor++; toast('El golem te regaló una flor 🌹', 1800); beep(660, .1, 'sine'); updateUI(); }
+  saveSoon();
+}
+
+/* ================= vehículos: moto, auto y cohete ================= */
+const vehicles = [];
+let riding = null, vehHintT = 0;
+const VEH = {
+  moto: { name: 'la moto', hw: .4, h: 1.1, top: 13, turn: 3.6, cam: 1.5 },
+  auto: { name: 'el auto', hw: .75, h: 1.5, top: 10.5, turn: 2.6, cam: 3 },
+  cohete: { name: 'el cohete', hw: .6, h: 3.6, top: 9, turn: 4, cam: 5 }
+};
+function wheel(p, x, y, z, r) { const w = new THREE.Group(); w.position.set(x, y, z); p.add(w); bx(w, .2, r * 2, r * 2, '#1e1e1e'); bx(w, .22, r, r, '#9a9a9a'); return w; }
+function makeMoto() {
+  const g = new THREE.Group(), r = { wheels: [] };
+  r.wheels.push(wheel(g, 0, .3, .62, .3), wheel(g, 0, .3, -.6, .3));
+  bx(g, .26, .3, 1.0, '#e0302a', 0, .62, 0); bx(g, .3, .22, .5, '#e0302a', 0, .8, .25); bx(g, .28, .12, .46, '#1e1e1e', 0, .82, -.18);
+  bx(g, .08, .5, .08, '#888', 0, .85, .58); bx(g, .7, .07, .07, '#1e1e1e', 0, 1.1, .55); bx(g, .16, .14, .06, '#fff3a0', 0, .9, .66, { emissive: '#ffe066' });
+  bx(g, .1, .1, .5, '#9a9a9a', .16, .45, -.35);
+  g.userData.rig = r; return g;
+}
+function makeCar() {
+  const g = new THREE.Group(), r = { wheels: [] };
+  [[-.72, .75], [.72, .75], [-.72, -.8], [.72, -.8]].forEach(([x, z]) => r.wheels.push(wheel(g, x, .32, z, .32)));
+  bx(g, 1.4, .55, 2.5, '#2e7bd6', 0, .62, 0); bx(g, 1.3, .55, 1.3, '#2e7bd6', 0, 1.15, -.15);
+  bx(g, 1.32, .4, 1.1, '#bfe6ff', 0, 1.18, -.15, { transparent: true, opacity: .75 });
+  bx(g, 1.42, .1, 2.52, '#1d5aa0', 0, .38, 0);
+  [-1, 1].forEach(s => { bx(g, .26, .14, .04, '#fff3a0', s * .48, .7, 1.26, { emissive: '#ffe066' }); bx(g, .24, .12, .04, '#e0302a', s * .5, .7, -1.26, { emissive: '#900' }); });
+  bx(g, .5, .06, .04, '#e8e8e8', 0, .5, 1.26);
+  g.userData.rig = r; return g;
+}
+function makeRocket() {
+  const g = new THREE.Group(), r = {};
+  bx(g, .9, 2.0, .9, '#f2f2f2', 0, 1.6, 0); bx(g, .7, .5, .7, '#e0302a', 0, 2.85, 0); bx(g, .44, .4, .44, '#e0302a', 0, 3.3, 0); bx(g, .2, .3, .2, '#e0302a', 0, 3.62, 0);
+  bx(g, .5, .5, .06, '#4aa3f0', 0, 2.1, .46); bx(g, .6, .6, .04, '#9a9a9a', 0, 2.1, .45);
+  [[.55, 0, 0, 0], [-.55, 0, 0, 0], [0, 0, .55, 1], [0, 0, -.55, 1]].forEach(([x, , z, rot]) => { const f = bx(g, rot ? .1 : .4, .8, rot ? .4 : .1, '#e0302a', x, .7, z); f.rotation.y = rot ? 0 : 0; });
+  bx(g, .7, .3, .7, '#666', 0, .45, 0);
+  r.flame = new THREE.Group(); r.flame.position.set(0, .25, 0); g.add(r.flame);
+  bx(r.flame, .5, .5, .5, '#ff8c2a', 0, -.15, 0, { emissive: '#ff6a00' }); bx(r.flame, .3, .5, .3, '#ffe066', 0, -.35, 0, { emissive: '#ffcc00' });
+  r.flame.visible = false;
+  g.userData.rig = r; return g;
+}
+function makeVehicle(kind, x, y, z, yaw) {
+  const V = VEH[kind], v = { kind, V, model: kind === 'moto' ? makeMoto() : kind === 'auto' ? makeCar() : makeRocket(), body: newBody(V.hw, V.h), yaw: yaw || 0, spd: 0 };
+  v.body.p.set(x, y, z); v.body.jumpV = 7.5;
+  v.model.traverse(o => { o.userData.veh = v; }); scene.add(v.model); v.shadow = makeShadow(kind === 'auto' ? 2.2 : 1.2);
+  v.model.position.copy(v.body.p); v.model.rotation.y = v.yaw;
+  vehicles.push(v); return v;
+}
+function placeVehicles(saved) {
+  vehicles.splice(0).forEach(v => { scene.remove(v.model); scene.remove(v.shadow); });
+  if (saved && saved.length) { saved.forEach(s => makeVehicle(s.k, s.p[0], s.p[1] + .2, s.p[2], s.y)); return; }
+  // al lado del pueblo si hay, si no cerca tuyo
+  const base = village || player.body.p;
+  ['moto', 'auto', 'cohete'].forEach((k, i) => {
+    let spot = null;
+    for (let t = 0; t < 60 && !spot; t++) {
+      const a = (i * 2.1) + t * .37, r = (village ? 11 : 5) + (t % 6), x = Math.floor(base.x + Math.cos(a) * r) + .5, z = Math.floor(base.z + Math.sin(a) * r) + .5;
+      if (x < 3 || z < 3 || x > WX - 3 || z > WZ - 3) continue;
+      const y = surfaceY(x, z); if (!y || y <= SEA + 1) continue;
+      const tb = newBody(VEH[k].hw + .2, VEH[k].h); if (!collides(tb, x, y, z)) spot = [x, y, z];
+    }
+    if (spot) makeVehicle(k, spot[0], spot[1], spot[2], i);
+  });
+}
+function readMove() { // dirección deseada según el joystick/teclas y hacia dónde mira la cámara
+  let jx = joy.x, jy = joy.y;
+  if (keys.KeyA || keys.ArrowLeft) jx -= 1; if (keys.KeyD || keys.ArrowRight) jx += 1; if (keys.KeyW || keys.ArrowUp) jy -= 1; if (keys.KeyS || keys.ArrowDown) jy += 1;
+  const l = Math.hypot(jx, jy); if (l > 1) { jx /= l; jy /= l; }
+  const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
+  const mx = fx * -jy + rx * jx, mz = fz * -jy + rz * jx; return { mx, mz, ml: Math.hypot(mx, mz) };
+}
+function enterVehicle(v) {
+  if (riding || catching) return;
+  riding = v; v.spd = 0; document.body.classList.add('riding');
+  player.model.visible = v.kind === 'moto'; player.shadow.visible = false;
+  $('jumpBtn').textContent = v.kind === 'cohete' ? 'Subir' : 'Saltar';
+  toast(v.kind === 'cohete' ? '¡Al cohete! Mantené "Subir" para volar. "Bajar" para salir.' : 'Te subiste a ' + v.V.name + '. Mové el joystick para manejar.', 2800);
+  beep(330, .08); setTimeout(() => beep(440, .1), 80);
+}
+function exitVehicle() {
+  const v = riding; if (!v) return;
+  riding = null; document.body.classList.remove('riding'); $('jumpBtn').textContent = 'Saltar';
+  v.spd = 0; v.body.v.set(0, v.body.v.y, 0); v.model.userData.rig.flame && (v.model.userData.rig.flame.visible = false);
+  // bajarse al costado
+  const sx = Math.cos(v.yaw) * (v.V.hw + .9), sz = -Math.sin(v.yaw) * (v.V.hw + .9);
+  let x = v.body.p.x + sx, z = v.body.p.z + sz, y = surfaceY(x, z);
+  if (!y || collides(player.body, x, y, z)) { x = v.body.p.x; z = v.body.p.z; y = v.body.p.y + v.V.h; }
+  player.body.p.set(x, y, z); player.body.v.set(0, 0, 0);
+  player.model.visible = true; player.shadow.visible = true; beep(300, .08);
+}
+function updateVehicles(dt) {
+  vehicles.forEach(v => {
+    const b = v.body, r = v.model.userData.rig;
+    if (v !== riding) { b.fly = false; b.v.x *= .9; b.v.z *= .9; moveBody(b, dt); if (b.p.y < SEA + .9 && surfaceY(b.p.x, b.p.z) === null) { b.p.y = SEA + .9; b.v.y = 0; } } // en el agua flota
+    else if (v.kind === 'cohete') {
+      const { mx, mz, ml } = readMove(), up = jumpHeld || keys.Space;
+      b.fly = true;
+      b.v.y += ((up ? 7 : b.ground ? 0 : -4) - b.v.y) * Math.min(1, dt * 3); // soltando "Subir" baja despacito
+      if (b.p.y > 70 && b.v.y > 0) b.v.y = 0;
+      const air = !b.ground || up, sp = air ? v.V.top * Math.min(1, ml) : 0, k = Math.min(1, dt * 3);
+      b.v.x += ((ml > .05 ? mx / ml * sp : 0) - b.v.x) * k; b.v.z += ((ml > .05 ? mz / ml * sp : 0) - b.v.z) * k;
+      if (ml > .05 && air) v.yaw = angLerp(v.yaw, Math.atan2(mx, mz), Math.min(1, dt * v.V.turn));
+      const wasGround = b.ground; moveBody(b, dt); b.ground = wasGround && !up ? true : b.ground;
+      if (b.hit || collides(b, b.p.x, b.p.y - .05, b.p.z)) b.ground = true;
+      r.flame.visible = up; if (up) { r.flame.scale.y = .8 + Math.random() * .6; if (Math.random() < .7) particle(b.p.clone().add(new THREE.Vector3((Math.random() - .5) * .4, 0, (Math.random() - .5) * .4)), new THREE.Vector3((Math.random() - .5), -3, (Math.random() - .5)), Math.random() < .5 ? '#ff8c2a' : '#aaaaaa', .18, .6, -2); if (Math.random() < dt * 8) beep(70 + Math.random() * 30, .05, 'sawtooth', .03); }
+    } else {
+      const { mx, mz, ml } = readMove();
+      let want = 0;
+      if (ml > .08) { const ty = Math.atan2(mx, mz), diff = Math.abs(angLerp(0, ty - v.yaw, 1)); v.yaw = angLerp(v.yaw, ty, Math.min(1, dt * v.V.turn * (.4 + Math.min(1, Math.abs(v.spd) / 4)))); want = v.V.top * Math.min(1, ml) * clamp(Math.cos(diff), .25, 1); }
+      v.spd += (want - v.spd) * Math.min(1, dt * (want > v.spd ? 1.6 : 3));
+      const fx = Math.sin(v.yaw), fz = Math.cos(v.yaw);
+      const ahead = surfaceY(b.p.x + fx * (v.V.hw + .9), b.p.z + fz * (v.V.hw + .9));
+      if (ahead === null && v.spd > 0) { v.spd = 0; if (performance.now() - vehHintT > 3000) { vehHintT = performance.now(); toast('¡Agua! ' + (v.kind === 'moto' ? 'La moto' : 'El auto') + ' no nada.', 1500); } }
+      b.v.x = fx * v.spd; b.v.z = fz * v.spd; b.fly = false;
+      moveBody(b, dt);
+      if (b.hit) v.spd *= .5;
+      r.wheels.forEach(w => { w.rotation.x += v.spd * dt / .3; });
+      if (Math.abs(v.spd) > 4 && Math.random() < dt * 3) beep(60 + v.spd * 6, .06, 'sawtooth', .025);
+      if (ADV && Math.abs(v.spd) > 4) mobs.forEach(m => { if (m.kind === 'zombie' && m.alive && m.body.p.distanceTo(b.p) < v.V.hw + 1) hurtMob(m, 6, b.p); });
+      if (v.kind === 'moto') v.model.rotation.z = 0;
+    }
+    v.model.position.copy(b.p); v.model.rotation.y = v.yaw;
+    if (v === riding && v.kind === 'moto') v.model.rotation.z = angLerp(0, 0, 1);
+    placeShadow(v.shadow, b.p, v.kind === 'auto' ? 2.2 : 1.2);
+  });
+  if (riding) {
+    const v = riding, b = v.body;
+    player.body.p.set(b.p.x, b.p.y + (v.kind === 'moto' ? .45 : v.kind === 'auto' ? .4 : 1.6), b.p.z); player.body.v.set(0, 0, 0);
+    player.yaw = v.yaw;
+    if (v.kind === 'moto') { const m = player.model, rig = m.userData.rig; m.position.copy(player.body.p); m.rotation.y = v.yaw; rig.legL.rotation.x = rig.legR.rotation.x = -1.3; rig.armL.rotation.x = rig.armR.rotation.x = -1.2; rig.armL.rotation.z = rig.armR.rotation.z = 0; }
+    if (look.id === null && (Math.abs(v.spd) > 2 || (v.kind === 'cohete' && !b.ground))) camYaw = angLerp(camYaw, v.yaw + Math.PI, Math.min(1, dt * 1.2));
+  } else if (performance.now() - vehHintT > 20000) {
+    const near = vehicles.find(v => v.body.p.distanceTo(player.body.p) < 3);
+    if (near) { vehHintT = performance.now(); toast('Tocá ' + near.V.name + ' para subirte 🚀', 2200); }
+  }
+}
+// tocar aldeanos, gallinas, golem o vehículos (devuelve true si fue para ellos)
+function townTap(rayc, hv, hitC) {
+  const objs = town.filter(n => n.model.visible).map(n => n.model).concat(vehicles.filter(v => v !== riding).map(v => v.model));
+  if (!objs.length) return false;
+  const h = rayc.intersectObjects(objs, true)[0];
+  if (!h || (hv && h.distance > hv.t + .3) || (hitC && hitC.distance < h.distance)) return false;
+  const o = h.object.userData;
+  if (o.veh) { if (o.veh.body.p.distanceTo(player.body.p) > 6) toast('Acercate a ' + o.veh.V.name + '.'); else enterVehicle(o.veh); return true; }
+  if (o.npc) { tapNpc(o.npc); return true; }
+  return false;
+}
+$('exitBtn').addEventListener('click', exitVehicle);
+
 /* ================= pantalla completa y horizontal (celular) ================= */
 const TOUCH = matchMedia('(pointer:coarse)').matches;
 const canFull = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
@@ -1363,6 +1692,7 @@ addEventListener('resize', checkTurn); addEventListener('orientationchange', () 
 resize();
 if (!load()) { freshState(); newWorld(); }
 buildAll();
+spawnTown(); placeVehicles(savedVeh);
 camYaw = player.yaw + Math.PI;
 camTarget.set(player.body.p.x, player.body.p.y + 1.35, player.body.p.z);
 MONS.forEach(monTexture); // empieza a bajar las imágenes
@@ -1384,5 +1714,5 @@ $('playBtn').addEventListener('click', () => start(false));
 $('advBtn').addEventListener('click', () => start(true));
 try { if (localStorage.getItem('bichos-modo') === 'aventura') $('title').classList.add('lastAdv'); } catch (e) { }
 $('switchMode').addEventListener('click', () => { $('dexOv').hidden = true; running = true; last = performance.now(); setAdv(!ADV); save(); });
-window.__game = { get player() { return player; }, get wild() { return wild; }, get followers() { return followers; }, tapAt, throwAt };
+window.__game = { get player() { return player; }, get wild() { return wild; }, get followers() { return followers; }, tapAt, throwAt, T: { vehicles, town, get village() { return village; }, enterVehicle, exitVehicle, get riding() { return riding; }, joy, adv, setT(v) { tday = v; }, get mobs() { return mobs; }, makeMob, get party() { return party; }, tapNpc } };
 })();

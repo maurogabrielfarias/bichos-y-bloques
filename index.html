@@ -117,6 +117,10 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .mon .tag{position:absolute;top:4px;right:4px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:900;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em}
 .rar{font-size:10px!important;letter-spacing:.08em;text-transform:uppercase;font-weight:900!important}
 [hidden]{display:none!important}
+/* manejando: se esconde la barra de bloques y aparece "Bajar" */
+#exitBtn{position:fixed;left:50%;width:150px;margin-left:-75px;bottom:calc(var(--sb) + 12px);height:52px;font-size:18px;background:var(--place);color:var(--place-ink);border-color:#1d5f99;display:none}
+.riding #exitBtn{display:block}
+.riding .hot,.riding .keys{display:none!important}
 /* iPhone: botones más chicos y menos a la derecha */
 #iosTip{background:rgba(74,163,240,.18);border:2px solid var(--place);padding:8px 10px;color:var(--ink)!important;font-size:14px;line-height:1.35}
 #iosTip b{color:var(--accent)}
@@ -194,18 +198,20 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 </div>
 <div class="hot" id="hot"></div>
 <div id="hurtFx"></div>
+<button id="exitBtn">Bajar 🚪</button>
 <div class="keys only-desk">
   <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o flechas: caminar<br>
   <kbd>Espacio</kbd> saltar · <kbd>Q</kbd><kbd>E</kbd> girar<br>
   Arrastrá el mouse: mirar · Ruedita: zoom<br>
   Clic: romper / atrapar · Clic derecho: poner<br>
-  <kbd>F</kbd> atacar · <kbd>X</kbd> arma · <kbd>1</kbd>–<kbd>7</kbd> bloque · <kbd>C</kbd> cubo · <kbd>P</kbd> Pokédex
+  <kbd>V</kbd> subir/bajar · <kbd>F</kbd> atacar · <kbd>X</kbd> arma · <kbd>1</kbd>–<kbd>7</kbd> bloque · <kbd>C</kbd> cubo · <kbd>P</kbd> Pokédex
 </div>
 
 <div class="overlay" id="dexOv" hidden>
   <div class="card">
     <h2>Pokédex</h2>
     <p id="dexSum"></p>
+    <div class="row"><button class="btn" id="allOut">Sacar a todos 🎉</button><button class="btn" id="allIn">Guardar a todos</button></div>
     <div class="dex" id="dexGrid"></div>
     <div class="row">
       <button class="btn primary" id="dexClose">Seguir jugando</button>
@@ -272,6 +278,6 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 </div>
 
 <script src="js/three.min.js"></script>
-<script src="js/game.js?v=7"></script>
+<script src="js/game.js?v=8"></script>
 </body>
 </html>
