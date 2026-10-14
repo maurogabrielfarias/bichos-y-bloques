@@ -3,10 +3,11 @@
 'use strict';
 
 /* ================= constantes ================= */
-// tamaño de la isla: las islas nuevas son grandes (96); una partida vieja sigue en su isla (64) hasta que se muda
+// la isla es grande (96x96). Una partida de la isla chica vieja se pasa sola a una isla grande nueva:
+// se quedan los Pokémon, la Pokédex, las cosas y los amigos; lo construido no.
 const SAVE = 'bichos-bloques-3d-v1', BIG = 96;
-const SIZE = (() => { try { const s = JSON.parse(localStorage.getItem(SAVE)); if (s && s.seed) return s.wx || 64; } catch (e) { } return BIG; })();
-const WX = SIZE, WZ = SIZE, WY = 30, SEA = 6, CH = 16;
+(() => { try { const s = JSON.parse(localStorage.getItem(SAVE)); if (s && s.seed && s.wx !== BIG) { Object.assign(s, { seed: (Math.random() * 1e9) | 0, wx: BIG, edits: {}, p: null, veh: null, track: 1 }); localStorage.setItem(SAVE, JSON.stringify(s)); } } catch (e) { } })();
+const WX = BIG, WZ = BIG, WY = 30, SEA = 6, CH = 16;
 const MAXP = 99, REACH = 8; // MAXP: pueden salir todos los Pokémon a la vez
 const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, LOG: 5, LEAVES: 6, PLANKS: 7, BRICK: 8, WATER: 9, TALL: 10, FLOWR: 11, FLOWY: 12, BED: 13, GEM: 14, ROAD: 15, ROADL: 16, CURB: 17 };
 const SOLID = new Uint8Array(32), OPAQUE = new Uint8Array(32), PLANT = new Uint8Array(32);
@@ -290,8 +291,7 @@ function buildTrack() {
 let village = null;
 function buildVillage(sd) {
   // en la isla grande el pueblo va adentro del anillo de la pista; si no entra, donde se pueda
-  if (WX >= BIG) return villageAt(sd, 9, Math.round(WX * .3) - 15) || villageAt(sd, 9, WX * .375);
-  return villageAt(sd, 9, WX * .375);
+  return villageAt(sd, 9, Math.round(WX * .3) - 15) || villageAt(sd, 9, WX * .375);
 }
 function villageAt(sd, dmin, dmax) {
   const r = rng32(sd ^ 0x71ab3), HX = 8, HZ = 6;
@@ -978,21 +978,8 @@ $('allOut').addEventListener('click', () => { party = [...MONS].sort((a, b) => a
 $('allIn').addEventListener('click', () => { party = []; rebuildFollowers(); save(); beep(300, .1); renderDex(); });
 $('bookBtn').addEventListener('click', () => { if (!running || newOpen) return; running = false; resetArm = false; $('resetBtn').textContent = 'Mundo nuevo'; renderDex(); $('dexOv').hidden = false; });
 $('dexClose').addEventListener('click', () => { $('dexOv').hidden = true; running = true; last = performance.now(); });
-// mudarse a una isla grande nueva llevando todo (Pokédex, Pokémon, cosas, amigos); las construcciones no viajan
-function moveToBigIsland() {
-  save();
-  try {
-    const s = JSON.parse(localStorage.getItem(SAVE)) || {};
-    Object.assign(s, { seed: (Math.random() * 1e9) | 0, wx: BIG, edits: {}, p: null, veh: null, track: 1 });
-    localStorage.setItem(SAVE, JSON.stringify(s));
-  } catch (e) { }
-  location.reload();
-}
-$('moveBig').addEventListener('click', moveToBigIsland);
-if (WX < BIG) $('bigTip').hidden = false;
 $('resetBtn').addEventListener('click', () => {
   if (!resetArm) { resetArm = true; $('resetBtn').textContent = '¿Seguro? Tocá otra vez'; return; }
-  if (WX < BIG) { try { localStorage.setItem(SAVE, JSON.stringify({ seed: (Math.random() * 1e9) | 0, wx: BIG, track: 1, cubes: 5, inv: { madera: 2, piedra: 2 } })); } catch (e) { } location.reload(); return; }
   exitVehicle(); wild.splice(0).forEach(removeCreature); newWorld(); buildAll(); spawnTown(); placeVehicles(null); rebuildFollowers(); updateUI(); save();
   $('dexOv').hidden = true; running = true; last = performance.now(); toast('¡Isla nueva! Buscá Pokémon en el pasto alto.', 3000);
 });

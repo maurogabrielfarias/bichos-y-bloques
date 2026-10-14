@@ -19,7 +19,7 @@ Desde la Pokédex se puede cambiar de modo en cualquier momento.
 
 - **Pueblo:** tres casitas con aldeanos y gallinas. Tocá un aldeano para charlar; a veces te regala cubos, materiales o una gema. En modo Aventura, de noche se meten en sus casas.
 - **Golem gigante:** vive en el pueblo. Tocalo y te cuida: te sigue y aplasta zombies.
-- **Isla grande:** las islas nuevas son más grandes. Si tenías una isla vieja, en la pantalla de inicio aparece *Mudarse a la isla grande*: tus Pokémon, la Pokédex, los lobos y tus cosas se mudan con vos (las construcciones no).
+- **Isla grande:** la isla es de 96x96 bloques. Las partidas de la isla chica vieja se pasan solas a una isla grande nueva (se quedan los Pokémon, la Pokédex y las cosas; lo construido no).
 - **Patrulla Canina:** Chase, Marshall, Skye, Rubble, Rocky, Zuma, Everest, Tracker, Rex, Liberty, Ella y Tuck andan por la isla. Dale un hueso 🦴 a cada uno para que sea tu amigo: pasean alrededor tuyo y te defienden de los zombies. Los aldeanos regalan huesos.
 - **Pista:** un circuito de asfalto con cordones rojos y blancos alrededor de la isla, con subidas suaves y túneles. En la barra de bloques, el casillero 8 tiene bloques de pista infinitos (tocalo otra vez para cambiar entre asfalto, línea y cordón).
 - **Moto, auto y cohete:** la moto y el auto empiezan en la pista, el cohete cerca del pueblo. Tocalos (o tecla V) para subirte y manejar con el joystick; *Bajar* para salir. En el cohete, mantené *Subir* (o Espacio) para volar.

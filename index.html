@@ -133,10 +133,6 @@ html.iosbg,html.iosbg body{background:#2f5d2a}
 .ios #modeBtn{grid-column:1;grid-row:3;width:72px;height:44px;font-size:13px}
 .ios #jumpBtn{grid-column:2;grid-row:2 / span 2;width:68px;height:68px;font-size:13px}
 .ios #atkBtn{grid-column:2;grid-row:1;width:68px;height:44px;font-size:13px}
-#bigTip{display:flex;flex-direction:column;gap:6px;align-items:center;background:rgba(242,178,51,.15);border:2px solid var(--accent);padding:8px 10px;font-size:14px;font-weight:700}
-#bigTip[hidden]{display:none}
-#bigTip b{color:var(--accent);font-family:var(--display);font-weight:500;font-size:17px}
-#bigTip .btn{min-height:44px;font-size:15px;background:var(--accent);color:var(--accent-ink);border-color:#a86f10}
 /* modo aventura */
 .adv-only{display:none!important}
 .adv .adv-only{display:flex!important}
@@ -281,12 +277,11 @@ html.iosbg,html.iosbg body{background:#2f5d2a}
       <button class="mode night" id="advBtn"><i>🌙</i><strong>Modo Aventura</strong><span>Llega la noche con zombies. Espada, arco y lobos amigos.</span></button>
     </div>
     <p id="iosTip" hidden>📲 <b>Pantalla completa en iPhone:</b> en Safari tocá Compartir <span class="share">⬆️</span> → <b>Agregar a inicio</b>, y abrí el juego desde ese ícono.</p>
-    <div id="bigTip" hidden><b>🏝️ ¡Hay una isla nueva más grande!</b><span>Tus Pokémon, la Pokédex, los lobos y tus cosas se mudan con vos. Lo que construiste se queda en esta isla.</span><button class="btn" id="moveBig">Mudarse a la isla grande</button></div>
     <p id="loadMsg">Preparando el mundo…</p>
   </div>
 </div>
 
 <script src="js/three.min.js"></script>
-<script src="js/game.js?v=10"></script>
+<script src="js/game.js?v=11"></script>
 </body>
 </html>
