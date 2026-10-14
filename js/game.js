@@ -1120,7 +1120,7 @@ function frame(now) {
 let ADV = false;
 const DAYLEN = 420; // segundos por día completo: unos 4 y medio de día y 2 y medio de noche
 let tday = .3; // 0 = amanecer · .68 = anochecer
-const adv = { hp: 10, huesos: 0, flechas: 0, espada: false, arco: false, arma: 'mano', lobos: 0, pups: [], pupGift: false };
+const adv = { hp: 10, huesos: 0, flechas: 0, espada: false, arco: false, arma: 'mano', lobos: 0, pups: [], pupGift: false, dinos: [] };
 const mobs = [], arrows = [];
 let hurtT = 0, sinceHurt = 99, regenT = 0, zSpawnT = 0, wSpawnT = 0, wasNight = false, faintOpen = false;
 
@@ -1514,13 +1514,48 @@ function makeGolem() {
   [-1, 1].forEach(s => bx(g, .1, .08, .02, '#7a1a1a', s * .14, 2.55, .335));
   g.userData.rig = r; return g;
 }
+// dinosaurios que cuidan el pueblo
+function makeTrex() {
+  const g = new THREE.Group(), r = {}, G = '#5f8a3a', G2 = '#4a6e2c', B2 = '#c8c08a';
+  r.legL = new THREE.Group(); r.legL.position.set(-.4, 1.4, -.1); g.add(r.legL); bx(r.legL, .5, 1.0, .6, G2, 0, -.4, 0); bx(r.legL, .5, .2, .8, G2, 0, -1.3, .15); bx(r.legL, .4, .5, .4, G2, 0, -1.05, 0);
+  r.legR = new THREE.Group(); r.legR.position.set(.4, 1.4, -.1); g.add(r.legR); bx(r.legR, .5, 1.0, .6, G2, 0, -.4, 0); bx(r.legR, .5, .2, .8, G2, 0, -1.3, .15); bx(r.legR, .4, .5, .4, G2, 0, -1.05, 0);
+  bx(g, 1.1, 1.1, 1.8, G, 0, 1.9, 0); bx(g, .9, .8, 1.4, B2, 0, 1.6, .15); // cuerpo y panza
+  bx(g, .8, .8, .7, G, 0, 2.5, .95); // cuello
+  r.tail = new THREE.Group(); r.tail.position.set(0, 1.9, -.9); g.add(r.tail); bx(r.tail, .8, .7, 1.2, G, 0, 0, -.5); bx(r.tail, .5, .45, 1.1, G, 0, -.1, -1.5); bx(r.tail, .25, .25, .8, G, 0, -.2, -2.3);
+  r.head = new THREE.Group(); r.head.position.set(0, 2.9, 1.2); g.add(r.head);
+  bx(r.head, .9, .65, 1.25, G, 0, .1, .45); bx(r.head, .92, .1, .9, '#f2f2e0', 0, -.22, .6); // dientes
+  [-1, 1].forEach(k => { bx(r.head, .06, .16, .16, '#ffd23f', k * .46, .28, .3); bx(r.head, .04, .1, .08, '#111', k * .48, .28, .33); });
+  r.jaw = new THREE.Group(); r.jaw.position.set(0, -.25, .05); r.head.add(r.jaw); bx(r.jaw, .8, .25, 1.0, G2, 0, -.12, .45); bx(r.jaw, .78, .08, .8, '#f2f2e0', 0, .02, .5);
+  [-1, 1].forEach(k => { const a = bx(g, .14, .4, .14, G2, k * .45, 1.8, .85); a.rotation.x = -.8; }); // bracitos
+  [[.2, 2.5, -.3], [-.3, 2.2, .3], [.35, 1.6, -.5]].forEach(([x, y, z]) => bx(g, .2, .2, .02, G2, x > 0 ? .56 : -.56, y, z));
+  g.userData.rig = r; return g;
+}
+function makeRaptor() {
+  const g = new THREE.Group(), r = {}, O = '#b8743a', O2 = '#7a4a22', W = '#e8d8b8';
+  r.legL = new THREE.Group(); r.legL.position.set(-.16, .75, 0); g.add(r.legL); bx(r.legL, .16, .5, .22, O2, 0, -.2, 0); bx(r.legL, .12, .35, .12, O2, 0, -.55, .05); bx(r.legL, .14, .08, .3, O2, 0, -.72, .12);
+  r.legR = new THREE.Group(); r.legR.position.set(.16, .75, 0); g.add(r.legR); bx(r.legR, .16, .5, .22, O2, 0, -.2, 0); bx(r.legR, .12, .35, .12, O2, 0, -.55, .05); bx(r.legR, .14, .08, .3, O2, 0, -.72, .12);
+  bx(g, .4, .42, .9, O, 0, .95, 0); bx(g, .3, .3, .6, W, 0, .85, .1);
+  [-.3, 0, .3].forEach(z => bx(g, .42, .1, .1, O2, 0, 1.12, z)); // rayas
+  bx(g, .26, .26, .4, O, 0, 1.2, .55);
+  r.tail = new THREE.Group(); r.tail.position.set(0, 1.0, -.45); g.add(r.tail); bx(r.tail, .26, .24, .7, O, 0, 0, -.3); bx(r.tail, .14, .14, .7, O2, 0, .02, -.9);
+  r.head = new THREE.Group(); r.head.position.set(0, 1.35, .75); g.add(r.head);
+  bx(r.head, .3, .28, .55, O, 0, 0, .15); bx(r.head, .32, .05, .4, '#f2f2e0', 0, -.12, .25);
+  [-1, 1].forEach(k => { bx(r.head, .04, .08, .08, '#ffd23f', k * .16, .06, .12); bx(r.head, .02, .05, .04, '#111', k * .17, .06, .14); });
+  r.jaw = new THREE.Group(); r.jaw.position.set(0, -.13, .05); r.head.add(r.jaw); bx(r.jaw, .26, .08, .45, O2, 0, -.03, .2);
+  [-1, 1].forEach(k => { const a = bx(g, .08, .3, .08, O2, k * .2, .95, .5); a.rotation.x = -.9; });
+  g.userData.rig = r; return g;
+}
+const NPCDIM = { aldeano: [.3, 1.9, .9], gallina: [.2, .6, .5], pup: [.25, .95, .9], golem: [.6, 2.8, 1.8], trex: [.85, 3.3, 2.6], raptor: [.32, 1.5, 1] };
+const DINO = { trex: { name: 'T-Rex', huesos: 2, col: '#5f8a3a' }, raptor: { name: 'Velociraptor', huesos: 1, col: '#b8743a' } };
 function makeNpc(kind, x, y, z, k) {
-  const n = { kind, k, model: kind === 'aldeano' ? makeVillager(k) : kind === 'gallina' ? makeChicken() : kind === 'pup' ? makePup(PUP[k]) : makeGolem(),
-    body: newBody(kind === 'golem' ? .6 : kind === 'gallina' || kind === 'pup' ? .25 : .3, kind === 'golem' ? 2.8 : kind === 'gallina' ? .6 : kind === 'pup' ? .95 : 1.9),
+  const dm = NPCDIM[kind];
+  const n = { kind, k, model: kind === 'aldeano' ? makeVillager(k) : kind === 'gallina' ? makeChicken() : kind === 'pup' ? makePup(PUP[k]) : kind === 'trex' ? makeTrex() : kind === 'raptor' ? makeRaptor() : makeGolem(),
+    body: newBody(dm[0], dm[1]),
     yaw: Math.random() * 6, t: 0, dir: new THREE.Vector3(), phase: 0, atkT: 0, gift: 0, home: k };
-  n.body.p.set(x, y, z); n.body.jumpV = kind === 'golem' ? 9 : 7.5; n.base = new THREE.Vector3(x, y, z);
+  n.body.p.set(x, y, z); n.body.jumpV = kind === 'golem' || kind === 'trex' ? 9 : 7.5; n.base = new THREE.Vector3(x, y, z);
+  if (DINO[kind]) { const tag = nameTag(DINO[kind].name, DINO[kind].col); tag.position.set(0, dm[1] + .4, 0); n.model.add(tag); }
   if (kind === 'pup') { n.pup = PUP[k]; n.tamed = adv.pups.includes(k); }
-  n.model.traverse(o => { o.userData.npc = n; }); scene.add(n.model); n.shadow = makeShadow(kind === 'golem' ? 1.8 : kind === 'gallina' ? .5 : .9);
+  n.model.traverse(o => { o.userData.npc = n; }); scene.add(n.model); n.shadow = makeShadow(dm[2]);
   town.push(n); return n;
 }
 function spawnTown() {
@@ -1531,6 +1566,7 @@ function spawnTown() {
   for (let i = 0; i < 5; i++) makeNpc('gallina', v.x + rr() * 1.4, v.y + .1, v.z + (Math.random() - .5) * 6, i);
   const p = adv.golem ? player.body.p : v;
   makeNpc('golem', p.x + 2, (surfaceY(p.x + 2, p.z + 2) || v.y) + .1, p.z + 2, 0);
+  [['trex', 6, -4], ['raptor', -6, 4]].forEach(([k, ox, oz]) => { const q = adv.dinos.includes(k) ? player.body.p : v, x = q.x + ox, z = q.z + oz; makeNpc(k, x, (surfaceY(x, z) || v.y) + .1, z, 0); });
   spawnPups();
 }
 function spawnPups() {
@@ -1550,7 +1586,7 @@ function npcWander(n, cx, cz, rad, speed, dt) {
   if (n.t <= 0) { n.t = 2 + Math.random() * 3; if (Math.random() < .35) n.dir.set(0, 0, 0); else { const a = Math.random() * 6.28; n.dir.set(Math.cos(a), 0, Math.sin(a)); } if (Math.hypot(n.body.p.x - cx, n.body.p.z - cz) > rad) n.dir.set(cx - n.body.p.x, 0, cz - n.body.p.z).normalize(); }
   if (n.dir.x || n.dir.z) npcWalk(n, n.body.p.x + n.dir.x, n.body.p.z + n.dir.z, speed, dt); else { n.body.v.x *= .8; n.body.v.z *= .8; }
 }
-const PHRASES = ['¡Los cachorros de la Patrulla Canina andan por la isla!', '¡Hola, explorador!', '¡Qué lindos tus Pokémon!', 'Hmmm… hmm.', '¡Cuidado con los zombies de noche!', '¿Viste el cohete? ¡Vuela altísimo!', 'Las gallinas se escaparon otra vez…', 'El golem nos cuida. ¡Es muy fuerte!'];
+const PHRASES = ['El T-Rex y el raptor cuidan el pueblo. ¡Les encantan los huesos!', '¡Los cachorros de la Patrulla Canina andan por la isla!', '¡Hola, explorador!', '¡Qué lindos tus Pokémon!', 'Hmmm… hmm.', '¡Cuidado con los zombies de noche!', '¿Viste el cohete? ¡Vuela altísimo!', 'Las gallinas se escaparon otra vez…', 'El golem nos cuida. ¡Es muy fuerte!'];
 function updateNpc(n, dt) {
   const b = n.body, p = player.body.p, d = Math.hypot(p.x - b.p.x, p.z - b.p.z);
   if (collides(b, b.p.x, b.p.y, b.p.z)) b.p.y = Math.floor(b.p.y) + 1;
@@ -1583,6 +1619,19 @@ function updateNpc(n, dt) {
       }
     } else npcWander(n, n.base.x, n.base.z, 9, 1.3, dt);
     if (b.ground && Math.random() < dt * .15) b.v.y = 3.5; // saltitos de contento
+  } else if (DINO[n.kind]) { // T-Rex y Velociraptor: cuidan el pueblo, o a vos si son tus amigos
+    const tamed = adv.dinos.includes(n.kind), rex = n.kind === 'trex', home = village || n.base;
+    const z = ADV && nearestZombie(tamed ? p : home, tamed ? 16 : 15);
+    if (z) {
+      npcWalk(n, z.body.p.x, z.body.p.z, rex ? 3.8 : 6.5, dt);
+      if (z.body.p.distanceTo(b.p) < (rex ? 3 : 1.7) && n.atkT <= 0) { n.atkT = rex ? 1.4 : .7; n.bite = .4; hurtMob(z, rex ? 10 : 4, b.p); if (rex) { z.body.v.y = 9; beep(70, .35, 'sawtooth', .08); } else beep(600, .06, 'square', .05); }
+    } else if (tamed) {
+      if (d > 32) { const tx = p.x + 4, tz = p.z + 4; b.p.set(tx, (surfaceY(tx, tz) || p.y) + .2, tz); b.v.set(0, 0, 0); }
+      n.roamT = (n.roamT || 0) - dt;
+      if (!n.roam || n.roamT <= 0) { const a = Math.random() * 6.28, r = (rex ? 5 : 3) + Math.random() * 3; n.roam = { x: Math.cos(a) * r, z: Math.sin(a) * r }; n.roamT = 3 + Math.random() * 4; }
+      const gx = p.x + n.roam.x, gz = p.z + n.roam.z, gd = Math.hypot(gx - b.p.x, gz - b.p.z);
+      if (gd > 1) npcWalk(n, gx, gz, d > 10 ? (rex ? 5 : 7) : (rex ? 1.6 : 2.6), dt); else { b.v.x *= .8; b.v.z *= .8; }
+    } else npcWander(n, home.x, home.z, 12, rex ? 1.2 : 2.2, dt);
   } else { // golem
     const guard = adv.golem, z = ADV && nearestZombie(guard ? p : b.p, guard ? 16 : 12);
     if (z) {
@@ -1604,16 +1653,17 @@ function updateNpc(n, dt) {
   const r = n.model.userData.rig, sp = Math.hypot(b.v.x, b.v.z); n.phase += dt * sp * (n.kind === 'gallina' ? 6 : n.kind === 'golem' ? 1.6 : 2.6);
   const sw = Math.sin(n.phase) * Math.min(1, sp / 1.5) * .6;
   r.legL.rotation.x = sw; r.legR.rotation.x = -sw;
+  if (DINO[n.kind]) { n.bite = Math.max(0, (n.bite || 0) - dt); r.jaw.rotation.x = n.bite > 0 ? .7 * Math.sin(n.bite / .4 * Math.PI) : Math.max(0, Math.sin(performance.now() * .002 + n.phase)) * .08; r.tail.rotation.y = Math.sin(performance.now() * .003 + n.phase) * .25; r.head.rotation.y = Math.sin(performance.now() * .0015) * .15; }
   if (n.kind === 'golem') { n.swing = Math.max(0, (n.swing || 0) - dt); const up = n.swing > 0 ? -2.2 * Math.sin(n.swing / .5 * Math.PI) : 0; r.armL.rotation.x = -sw * .6 + up; r.armR.rotation.x = sw * .6 + up; }
   if (n.kind === 'pup') { r.legs[2].rotation.x = -sw; r.legs[3].rotation.x = sw; r.tail.rotation.y = Math.sin(performance.now() * (n.tamed ? .02 : .008) + n.phase) * .6; }
   if (n.kind === 'gallina') { const f = !b.ground ? Math.sin(performance.now() * .04) * .8 : 0; r.wingL.rotation.z = f; r.wingR.rotation.z = -f; r.head.rotation.x = sp < .2 && Math.sin(performance.now() * .003 + n.k) > .7 ? .6 : 0; }
-  placeShadow(n.shadow, b.p, n.kind === 'golem' ? 1.8 : n.kind === 'gallina' ? .5 : .9);
+  placeShadow(n.shadow, b.p, NPCDIM[n.kind][2]);
 }
 const pupFriends = () => town.filter(n => n.kind === 'pup' && n.tamed);
 function tapNpc(n) {
   const d = n.body.p.distanceTo(player.body.p);
   if (n.kind === 'gallina') { n.body.v.y = 4.5; n.dir.set(Math.random() - .5, 0, Math.random() - .5).normalize(); n.t = 1.5; beep(1100, .05, 'square', .04); setTimeout(() => beep(900, .07, 'square', .04), 70); toast('¡Cocorocó! 🐔', 1000); return; }
-  if (d > 7) { toast('Acercate más.'); return; }
+  if (d > (DINO[n.kind] ? 11 : 7)) { toast('Acercate más.'); return; }
   if (n.kind === 'pup') {
     const pd = n.pup;
     if (n.tamed) { hearts(n.body.p); n.body.v.y = 5; toast(pd.name + ': "' + pd.say + '"', 2200); beep(880, .06, 'sine'); setTimeout(() => beep(1175, .08, 'sine'), 70); return; }
@@ -1636,6 +1686,16 @@ function tapNpc(n) {
       updateUI(); updateAdvUI(); saveSoon();
     } else toast('Aldeano: "' + PHRASES[Math.floor(Math.random() * PHRASES.length)] + '"', 2200);
     return;
+  }
+  if (DINO[n.kind]) {
+    const dd = DINO[n.kind], rex = n.kind === 'trex';
+    n.bite = .4; hearts(n.body.p.clone().add(new THREE.Vector3(0, rex ? 3 : 1.4, 0)));
+    if (rex) [90, 70, 55].forEach((f, i) => setTimeout(() => beep(f, .3, 'sawtooth', .08), i * 160)); else [900, 700, 1100].forEach((f, i) => setTimeout(() => beep(f, .07, 'square', .05), i * 80));
+    if (adv.dinos.includes(n.kind)) { toast(rex ? '¡ROOOAR! El T-Rex te cuida 🦖' : '¡Iiiik! El Velociraptor está atento 🦖', 2000); return; }
+    if (adv.huesos < dd.huesos) { toast('El ' + dd.name + ' cuida el pueblo. Para que sea tu amigo dale ' + dd.huesos + (dd.huesos > 1 ? ' huesos' : ' hueso') + ' 🦴 (tenés ' + adv.huesos + ').', 3200); return; }
+    adv.huesos -= dd.huesos; adv.dinos.push(n.kind); n.roamT = 0;
+    toast('¡El ' + dd.name + ' es tu amigo! Te sigue y te cuida de los zombies 🦖', 3400);
+    updateAdvUI(); saveSoon(); return;
   }
   // golem
   hearts(n.body.p.clone().add(new THREE.Vector3(0, 2, 0)));

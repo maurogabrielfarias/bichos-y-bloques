@@ -18,6 +18,7 @@ Desde la Pokédex se puede cambiar de modo en cualquier momento.
 ## En la isla
 
 - **Pueblo:** tres casitas con aldeanos y gallinas. Tocá un aldeano para charlar; a veces te regala cubos, materiales o una gema. En modo Aventura, de noche se meten en sus casas.
+- **T-Rex y Velociraptor:** cuidan el pueblo de los zombies. Para que sean tus amigos: 2 huesos 🦴 al T-Rex y 1 al Velociraptor. Después te siguen y te protegen.
 - **Golem gigante:** vive en el pueblo. Tocalo y te cuida: te sigue y aplasta zombies.
 - **Isla grande:** la isla es de 96x96 bloques. Las partidas de la isla chica vieja se pasan solas a una isla grande nueva (se quedan los Pokémon, la Pokédex y las cosas; lo construido no).
 - **Patrulla Canina:** Chase, Marshall, Skye, Rubble, Rocky, Zuma, Everest, Tracker, Rex, Liberty, Ella y Tuck andan por la isla. Dale un hueso 🦴 a cada uno para que sea tu amigo: pasean alrededor tuyo y te defienden de los zombies. Los aldeanos regalan huesos.
