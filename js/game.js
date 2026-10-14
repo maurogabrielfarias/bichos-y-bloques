@@ -922,7 +922,7 @@ let jumpHeld = false;
 const jb = $('jumpBtn');
 jb.addEventListener('pointerdown', e => { e.preventDefault(); jumpHeld = true; doJump(); });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => jb.addEventListener(ev, () => { jumpHeld = false; }));
-function doJump() { if (riding) return; const b = player.body; if (b.ground) { b.v.y = b.jumpV; b.ground = false; beep(260, .05, 'triangle'); } else if (b.inWater) b.v.y = 5; }
+function doJump() { if (riding) { if (riding.npc && riding.body.ground) { riding.body.v.y = riding.kind === 'trex' ? 8 : 9.5; riding.body.ground = false; } return; } const b = player.body; if (b.ground) { b.v.y = b.jumpV; b.ground = false; beep(260, .05, 'triangle'); } else if (b.inWater) b.v.y = 5; }
 
 // cartel de "¡Pokémon nuevo!" con la imagen grande
 let newOpen = false;
@@ -1029,7 +1029,7 @@ addEventListener('keydown', e => {
   else if (e.code === 'KeyR' || e.code === 'Tab') { e.preventDefault(); setMode(mode === 'break' ? 'place' : 'break'); updateUI(); }
   else if (e.code === 'KeyC') ADV ? openCraft() : craft();
   else if (e.code === 'KeyX' && ADV) cycleWeapon();
-  else if (e.code === 'KeyV') { if (riding) exitVehicle(); else { const v = vehicles.find(v => v.body.p.distanceTo(player.body.p) < 4.5); if (v) enterVehicle(v); else toast('No hay ningún vehículo cerca.'); } }
+  else if (e.code === 'KeyV') { if (riding) exitVehicle(); else { const v = vehicles.find(v => v.body.p.distanceTo(player.body.p) < 4.5), dn = town.find(n => DINO[n.kind] && adv.dinos.includes(n.kind) && n.body.p.distanceTo(player.body.p) < 6); if (v) enterVehicle(v); else if (dn) enterVehicle(dinoRide(dn)); else toast('No hay ningún vehículo ni dino amigo cerca.'); } }
   else if (e.code === 'KeyF') attack();
   else if (e.code === 'KeyL' || e.code === 'KeyP') $('bookBtn').click();
   else if (/^Digit[1-8]$/.test(e.code)) { sel = +e.code.slice(5) - 1; setMode('place'); updateUI(); toast(ITEMS[sel].name, 900); }
@@ -1591,7 +1591,9 @@ function updateNpc(n, dt) {
   const b = n.body, p = player.body.p, d = Math.hypot(p.x - b.p.x, p.z - b.p.z);
   if (collides(b, b.p.x, b.p.y, b.p.z)) b.p.y = Math.floor(b.p.y) + 1;
   n.t -= dt; n.atkT -= dt;
-  if (n.kind === 'aldeano') {
+  const ridden = riding && riding.npc === n;
+  if (ridden) { /* lo manejás vos */ }
+  else if (n.kind === 'aldeano') {
     const h = village && village.houses[n.k % village.houses.length];
     if (ADV && isNight() && h) { // de noche se van a dormir a su casita
       if (!n.inside) { npcWalk(n, h.door[0], h.door[2], 1.8, dt); if (Math.hypot(h.door[0] - b.p.x, h.door[2] - b.p.z) < 1.3 || n.t < -25) { n.inside = true; n.model.visible = false; n.shadow.visible = false; } }
@@ -1646,9 +1648,8 @@ function updateNpc(n, dt) {
     } else if (village) npcWander(n, village.x, village.z, 9, 1, dt);
   }
   // no meterse al agua
-  if (b.v.x || b.v.z) { const l = Math.hypot(b.v.x, b.v.z) || 1, sy = surfaceY(b.p.x + b.v.x / l * .8, b.p.z + b.v.z / l * .8); if (sy === null) { b.v.x = -b.v.x; b.v.z = -b.v.z; n.dir.multiplyScalar(-1); } }
-  moveBody(b, dt);
-  if (n.tyaw !== undefined) n.yaw = angLerp(n.yaw, n.tyaw, Math.min(1, dt * 6));
+  if (!ridden && (b.v.x || b.v.z)) { const l = Math.hypot(b.v.x, b.v.z) || 1, sy = surfaceY(b.p.x + b.v.x / l * .8, b.p.z + b.v.z / l * .8); if (sy === null) { b.v.x = -b.v.x; b.v.z = -b.v.z; n.dir.multiplyScalar(-1); } }
+  if (!ridden) { moveBody(b, dt); if (n.tyaw !== undefined) n.yaw = angLerp(n.yaw, n.tyaw, Math.min(1, dt * 6)); }
   n.model.position.copy(b.p); n.model.rotation.y = n.yaw;
   const r = n.model.userData.rig, sp = Math.hypot(b.v.x, b.v.z); n.phase += dt * sp * (n.kind === 'gallina' ? 6 : n.kind === 'golem' ? 1.6 : 2.6);
   const sw = Math.sin(n.phase) * Math.min(1, sp / 1.5) * .6;
@@ -1691,10 +1692,10 @@ function tapNpc(n) {
     const dd = DINO[n.kind], rex = n.kind === 'trex';
     n.bite = .4; hearts(n.body.p.clone().add(new THREE.Vector3(0, rex ? 3 : 1.4, 0)));
     if (rex) [90, 70, 55].forEach((f, i) => setTimeout(() => beep(f, .3, 'sawtooth', .08), i * 160)); else [900, 700, 1100].forEach((f, i) => setTimeout(() => beep(f, .07, 'square', .05), i * 80));
-    if (adv.dinos.includes(n.kind)) { toast(rex ? '¡ROOOAR! El T-Rex te cuida 🦖' : '¡Iiiik! El Velociraptor está atento 🦖', 2000); return; }
+    if (adv.dinos.includes(n.kind)) { enterVehicle(dinoRide(n)); return; } // ¡a montarlo!
     if (adv.huesos < dd.huesos) { toast('El ' + dd.name + ' cuida el pueblo. Para que sea tu amigo dale ' + dd.huesos + (dd.huesos > 1 ? ' huesos' : ' hueso') + ' 🦴 (tenés ' + adv.huesos + ').', 3200); return; }
     adv.huesos -= dd.huesos; adv.dinos.push(n.kind); n.roamT = 0;
-    toast('¡El ' + dd.name + ' es tu amigo! Te sigue y te cuida de los zombies 🦖', 3400);
+    toast('¡El ' + dd.name + ' es tu amigo! Te sigue y te cuida. Tocalo de nuevo para montarlo 🦖', 3600);
     updateAdvUI(); saveSoon(); return;
   }
   // golem
@@ -1789,9 +1790,10 @@ function readMove() { // dirección deseada según el joystick/teclas y hacia d�
 function enterVehicle(v) {
   if (riding || catching) return;
   riding = v; v.spd = 0; document.body.classList.add('riding');
-  player.model.visible = v.kind === 'moto'; player.shadow.visible = false;
+  player.model.visible = v.kind === 'moto' || !!v.npc; player.shadow.visible = false;
   $('jumpBtn').textContent = v.kind === 'cohete' ? 'Subir' : 'Saltar';
-  toast(v.kind === 'cohete' ? '¡Al cohete! Mantené "Subir" para volar. "Bajar" para salir.' : 'Te subiste a ' + v.V.name + '. Mové el joystick para manejar.', 2800);
+  toast(v.kind === 'cohete' ? '¡Al cohete! Mantené "Subir" para volar. "Bajar" para salir.' : v.npc ? '¡Arriba ' + v.V.name.replace('el ', 'del ') + '! Mové el joystick para andar, "Saltar" para saltar 🦖' : 'Te subiste a ' + v.V.name + '. Mové el joystick para manejar.', 2800);
+  if (v.kind === 'trex') [90, 70, 55].forEach((f, i) => setTimeout(() => beep(f, .3, 'sawtooth', .08), i * 160));
   beep(330, .08); setTimeout(() => beep(440, .1), 80);
 }
 function exitVehicle() {
@@ -1805,8 +1807,17 @@ function exitVehicle() {
   player.body.p.set(x, y, z); player.body.v.set(0, 0, 0);
   player.model.visible = true; player.shadow.visible = true; beep(300, .08);
 }
+// montar a los dinos amigos: se manejan igual que la moto
+function dinoRide(n) {
+  return n.rideV || (n.rideV = {
+    kind: n.kind, npc: n, spd: 0,
+    V: n.kind === 'trex' ? { name: 'el T-Rex', hw: .85, h: 3.3, top: 9.5, turn: 2.6, cam: 4 } : { name: 'el Velociraptor', hw: .32, h: 1.5, top: 14, turn: 4.2, cam: 2 },
+    get body() { return n.body; }, get model() { return n.model; },
+    get yaw() { return n.yaw; }, set yaw(v) { n.yaw = v; n.tyaw = v; }
+  });
+}
 function updateVehicles(dt) {
-  vehicles.forEach(v => {
+  vehicles.concat(riding && riding.npc ? [riding] : []).forEach(v => {
     const b = v.body, r = v.model.userData.rig;
     if (collides(b, b.p.x, b.p.y, b.p.z)) b.p.y = Math.floor(b.p.y) + 1; // si quedó adentro de un bloque
     if (v !== riding) { b.fly = false; b.v.x *= .9; b.v.z *= .9; moveBody(b, dt); if (b.p.y < SEA + .9 && surfaceY(b.p.x, b.p.z) === null) { b.p.y = SEA + .9; b.v.y = 0; } } // en el agua flota
@@ -1828,24 +1839,24 @@ function updateVehicles(dt) {
       v.spd += (want - v.spd) * Math.min(1, dt * (want > v.spd ? 1.6 : 3));
       const fx = Math.sin(v.yaw), fz = Math.cos(v.yaw);
       const ahead = surfaceY(b.p.x + fx * (v.V.hw + .9), b.p.z + fz * (v.V.hw + .9));
-      if (ahead === null && v.spd > 0) { v.spd = 0; if (performance.now() - vehHintT > 3000) { vehHintT = performance.now(); toast('¡Agua! ' + (v.kind === 'moto' ? 'La moto' : 'El auto') + ' no nada.', 1500); } }
+      if (ahead === null && v.spd > 0) { v.spd = 0; if (performance.now() - vehHintT > 3000) { vehHintT = performance.now(); toast('¡Agua! ' + v.V.name.charAt(0).toUpperCase() + v.V.name.slice(1) + ' no nada.', 1500); } }
       b.v.x = fx * v.spd; b.v.z = fz * v.spd; b.fly = false;
       moveBody(b, dt);
       if (b.hit) v.spd *= .5;
-      r.wheels.forEach(w => { w.rotation.x += v.spd * dt / .3; });
-      if (Math.abs(v.spd) > 4 && Math.random() < dt * 3) beep(60 + v.spd * 6, .06, 'sawtooth', .025);
+      if (r.wheels) r.wheels.forEach(w => { w.rotation.x += v.spd * dt / .3; });
+      if (v.npc) { if (v.kind === 'trex' && Math.abs(v.spd) > 2 && Math.random() < dt * 2.5) beep(45, .12, 'sine', .07); } // pisadas del T-Rex
+      else if (Math.abs(v.spd) > 4 && Math.random() < dt * 3) beep(60 + v.spd * 6, .06, 'sawtooth', .025);
       if (ADV && Math.abs(v.spd) > 4) mobs.forEach(m => { if (m.kind === 'zombie' && m.alive && m.body.p.distanceTo(b.p) < v.V.hw + 1) hurtMob(m, 6, b.p); });
       if (v.kind === 'moto') v.model.rotation.z = 0;
     }
-    v.model.position.copy(b.p); v.model.rotation.y = v.yaw;
-    if (v === riding && v.kind === 'moto') v.model.rotation.z = angLerp(0, 0, 1);
-    placeShadow(v.shadow, b.p, v.kind === 'auto' ? 2.2 : 1.2);
+    if (!v.npc) { v.model.position.copy(b.p); v.model.rotation.y = v.yaw; placeShadow(v.shadow, b.p, v.kind === 'auto' ? 2.2 : 1.2); }
   });
   if (riding) {
     const v = riding, b = v.body;
-    player.body.p.set(b.p.x, b.p.y + (v.kind === 'moto' ? .45 : v.kind === 'auto' ? .4 : 1.6), b.p.z); player.body.v.set(0, 0, 0);
+    const seat = { moto: .45, auto: .4, cohete: 1.6, trex: 2.55, raptor: 1.2 }[v.kind];
+    player.body.p.set(b.p.x - Math.sin(v.yaw) * (v.kind === 'trex' ? .2 : 0), b.p.y + seat, b.p.z - Math.cos(v.yaw) * (v.kind === 'trex' ? .2 : 0)); player.body.v.set(0, 0, 0);
     player.yaw = v.yaw;
-    if (v.kind === 'moto') { const m = player.model, rig = m.userData.rig; m.position.copy(player.body.p); m.rotation.y = v.yaw; rig.legL.rotation.x = rig.legR.rotation.x = -1.3; rig.armL.rotation.x = rig.armR.rotation.x = -1.2; rig.armL.rotation.z = rig.armR.rotation.z = 0; }
+    if (v.kind === 'moto' || v.npc) { const m = player.model, rig = m.userData.rig; m.position.copy(player.body.p); m.rotation.y = v.yaw; rig.legL.rotation.x = rig.legR.rotation.x = -1.3; rig.armL.rotation.x = rig.armR.rotation.x = -1.2; rig.armL.rotation.z = rig.armR.rotation.z = 0; }
     if (look.id === null && (Math.abs(v.spd) > 2 || (v.kind === 'cohete' && !b.ground))) camYaw = angLerp(camYaw, v.yaw + Math.PI, Math.min(1, dt * 1.2));
   } else if (performance.now() - vehHintT > 20000) {
     const near = vehicles.find(v => v.body.p.distanceTo(player.body.p) < 3);
@@ -1854,7 +1865,7 @@ function updateVehicles(dt) {
 }
 // tocar aldeanos, gallinas, golem o vehículos (devuelve true si fue para ellos)
 function townTap(rayc, hv, hitC) {
-  const objs = town.filter(n => n.model.visible).map(n => n.model).concat(vehicles.filter(v => v !== riding).map(v => v.model));
+  const objs = town.filter(n => n.model.visible && !(riding && riding.npc === n)).map(n => n.model).concat(vehicles.filter(v => v !== riding).map(v => v.model));
   if (!objs.length) return false;
   const h = rayc.intersectObjects(objs, true)[0];
   if (!h || (hv && h.distance > hv.t + .3) || (hitC && hitC.distance < h.distance)) return false;
