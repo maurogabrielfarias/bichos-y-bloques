@@ -3,8 +3,11 @@
 'use strict';
 
 /* ================= constantes ================= */
-const WX = 64, WZ = 64, WY = 30, SEA = 6, CH = 16;
-const SAVE = 'bichos-bloques-3d-v1', MAXP = 99, REACH = 8; // MAXP: pueden salir todos los Pokémon a la vez
+// tamaño de la isla: las islas nuevas son grandes (96); una partida vieja sigue en su isla (64) hasta que se muda
+const SAVE = 'bichos-bloques-3d-v1', BIG = 96;
+const SIZE = (() => { try { const s = JSON.parse(localStorage.getItem(SAVE)); if (s && s.seed) return s.wx || 64; } catch (e) { } return BIG; })();
+const WX = SIZE, WZ = SIZE, WY = 30, SEA = 6, CH = 16;
+const MAXP = 99, REACH = 8; // MAXP: pueden salir todos los Pokémon a la vez
 const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, LOG: 5, LEAVES: 6, PLANKS: 7, BRICK: 8, WATER: 9, TALL: 10, FLOWR: 11, FLOWY: 12, BED: 13, GEM: 14, ROAD: 15, ROADL: 16, CURB: 17 };
 const SOLID = new Uint8Array(32), OPAQUE = new Uint8Array(32), PLANT = new Uint8Array(32);
 [1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 15, 16, 17].forEach(i => SOLID[i] = 1);
@@ -21,7 +24,9 @@ const ITEMS = [
   { id: 'arena', name: 'Arena', tile: 4, block: B.SAND },
   { id: 'hojas', name: 'Hojas', tile: 7, block: B.LEAVES },
   { id: 'flor', name: 'Flor', tile: 12, block: B.FLOWR },
-  { id: 'pasto', name: 'Pasto alto', tile: 11, block: B.TALL }
+  { id: 'pasto', name: 'Pasto alto', tile: 11, block: B.TALL },
+  // bloques de pista infinitos: tocando otra vez el casillero cambia entre asfalto, línea y cordón
+  { id: 'pista', name: 'Pista', tile: 16, block: B.ROAD, inf: true, v: 0, vars: [[B.ROAD, 16, 'Pista'], [B.ROADL, 17, 'Pista con línea'], [B.CURB, 18, 'Cordón rojo y blanco']] }
 ];
 const DROP = { 15: 'piedra', 16: 'piedra', 17: 'piedra', 1: 'tierra', 2: 'tierra', 3: 'piedra', 4: 'arena', 5: 'madera', 6: 'hojas', 7: 'madera', 8: 'piedra', 10: 'pasto', 11: 'flor', 12: 'flor' };
 
@@ -185,7 +190,7 @@ const clouds = [];
   const r = rng32(99);
   for (let i = 0; i < 14; i++) {
     const c = new THREE.Mesh(new THREE.BoxGeometry(6 + r() * 10, 1.2, 4 + r() * 7), m);
-    c.position.set(-40 + r() * 150, 34 + r() * 4, -40 + r() * 150); scene.add(c); clouds.push(c);
+    c.position.set(-40 + r() * (WX + 86), 34 + r() * 4, -40 + r() * (WZ + 86)); scene.add(c); clouds.push(c);
   }
 })();
 
@@ -263,9 +268,9 @@ function generate(sd) {
 let track = null;
 function buildTrack() {
   const cx = WX / 2, cz = WZ / 2;
-  let R = 19;
+  let R = Math.round(WX * .3);
   if (village) { const vd = Math.hypot(village.x - cx, village.z - cz), near = vd - 10 - 4.5, far = vd + 10 + 4.5; if (R > near && R < far) R = far <= 26 ? far : near; }
-  if (R < 12 || R > 26) R = clamp(R, 12, 26);
+  R = clamp(R, 12, Math.round(WX * .41));
   const N = 360, hh = new Float32Array(N);
   for (let i = 0; i < N; i++) { const a = i / N * Math.PI * 2, x = clamp(Math.floor(cx + Math.cos(a) * R), 0, WX - 1), z = clamp(Math.floor(cz + Math.sin(a) * R), 0, WZ - 1); hh[i] = clamp(heights[z * WX + x], SEA + 2, WY - 8); }
   for (let pass = 0; pass < 3; pass++) { const c = hh.slice(); for (let i = 0; i < N; i++) { let s = 0; for (let k = -10; k <= 10; k++) s += c[(i + k + N) % N]; hh[i] = s / 21; } }
@@ -284,11 +289,16 @@ function buildTrack() {
 // pueblo: 3 casitas de madera con techo de ladrillo sobre un terreno plano
 let village = null;
 function buildVillage(sd) {
+  // en la isla grande el pueblo va adentro del anillo de la pista; si no entra, donde se pueda
+  if (WX >= BIG) return villageAt(sd, 9, Math.round(WX * .3) - 15) || villageAt(sd, 9, WX * .375);
+  return villageAt(sd, 9, WX * .375);
+}
+function villageAt(sd, dmin, dmax) {
   const r = rng32(sd ^ 0x71ab3), HX = 8, HZ = 6;
   let best = null;
   for (let k = 0; k < 400; k++) {
     const cx = HX + 2 + Math.floor(r() * (WX - 2 * HX - 4)), cz = HZ + 2 + Math.floor(r() * (WZ - 2 * HZ - 4));
-    const dc = Math.hypot(cx - WX / 2, cz - WZ / 2); if (dc < 9 || dc > 24) continue;
+    const dc = Math.hypot(cx - WX / 2, cz - WZ / 2); if (dc < dmin || dc > dmax) continue;
     let mn = 99, mx = -1, sum = 0, n = 0, bad = false;
     for (let z = cz - HZ; z <= cz + HZ && !bad; z++) for (let x = cx - HX; x <= cx + HX; x++) { const h = heights[z * WX + x]; if (h <= SEA + 1) { bad = true; break; } mn = Math.min(mn, h); mx = Math.max(mx, h); sum += h; n++; }
     if (bad) continue;
@@ -514,7 +524,7 @@ const followers = [], wild = [];
 
 function freshState() { inv = { madera: 2, piedra: 2, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }; cubes = 5; gems = 0; dex = {}; party = []; edits = {}; }
 function findSpawn() {
-  for (let rad = 0; rad < 30; rad++) for (let k = 0; k < 40; k++) {
+  for (let rad = 0; rad < WX * .47; rad++) for (let k = 0; k < 40; k++) {
     const a = k / 40 * Math.PI * 2, x = Math.floor(WX / 2 + Math.cos(a) * rad), z = Math.floor(WZ / 2 + Math.sin(a) * rad);
     const y = surfaceY(x, z); if (y && y > SEA + 1 && get(x, y - 1, z) === B.GRASS && !collides(player.body, x + .5, y, z + .5)) return [x, y, z];
   }
@@ -528,7 +538,7 @@ function newWorld() {
   player.body.p.set(x + .5, y, z + .5); player.body.v.set(0, 0, 0);
 }
 function save() {
-  try { localStorage.setItem(SAVE, JSON.stringify({ seed, edits, p: player.body.p.toArray(), inv, cubes, gems, dex, party, adv, tday, veh: vehicles.map(v => ({ k: v.kind, p: v.body.p.toArray(), y: v.yaw })), track: 1 })); } catch (e) { }
+  try { localStorage.setItem(SAVE, JSON.stringify({ seed, edits, p: player.body.p.toArray(), wx: WX, inv, cubes, gems, dex, party, adv, tday, veh: vehicles.map(v => ({ k: v.kind, p: v.body.p.toArray(), y: v.yaw })), track: 1 })); } catch (e) { }
 }
 let savedVeh = null, savedTrack = false;
 let saveT = null; function saveSoon() { clearTimeout(saveT); saveT = setTimeout(save, 600); }
@@ -540,7 +550,8 @@ function load() {
     inv = Object.assign({ madera: 0, piedra: 0, tierra: 0, arena: 0, hojas: 0, flor: 0, pasto: 0 }, s.inv); cubes = s.cubes | 0; gems = s.gems | 0; dex = {}; if (s.adv) Object.assign(adv, s.adv); if (typeof s.tday === 'number') tday = s.tday; savedVeh = s.veh || null; savedTrack = !!s.track;
     for (const k in s.dex || {}) { const id = MON[k] ? k : OLDMON[k]; if (id) dex[id] = (dex[id] || 0) + s.dex[k]; }
     party = [...new Set((s.party || []).map(id => MON[id] ? id : OLDMON[id]))].filter(id => dex[id] && MON[id]).slice(0, MAXP);
-    player.body.p.fromArray(s.p); if (collides(player.body, player.body.p.x, player.body.p.y, player.body.p.z)) { const [x, y, z] = findSpawn(); player.body.p.set(x + .5, y, z + .5); }
+    if (s.p) player.body.p.fromArray(s.p); else { const [x, y, z] = findSpawn(); player.body.p.set(x + .5, y, z + .5); }
+    if (collides(player.body, player.body.p.x, player.body.p.y, player.body.p.z)) { const [x, y, z] = findSpawn(); player.body.p.set(x + .5, y, z + .5); }
     return true;
   } catch (e) { return false; }
 }
@@ -864,7 +875,7 @@ function breakBlock(h) {
 }
 function placeBlock(h) {
   const it = ITEMS[sel];
-  if (!inv[it.id]) { toast('No tenés ' + it.name.toLowerCase() + '. Rompé bloques para juntar.'); beep(120, .12); return; }
+  if (!it.inf && !inv[it.id]) { toast('No tenés ' + it.name.toLowerCase() + '. Rompé bloques para juntar.'); beep(120, .12); return; }
   let x = h.px, y = h.py, z = h.pz;
   if (PLANT[h.v]) { x = h.x; y = h.y; z = h.z; }
   const cur = get(x, y, z);
@@ -876,7 +887,7 @@ function placeBlock(h) {
     if (inside(player.body) || followers.some(f => inside(f.body)) || wild.some(w => w.alive && inside(w.body))) { toast('¡Hay alguien ahí!'); beep(120, .12); return; }
     void box;
   }
-  setBlock(x, y, z, it.block); inv[it.id]--; player.throwT = .25; beep(330, .08); updateUI();
+  setBlock(x, y, z, it.block); if (!it.inf) inv[it.id]--; player.throwT = .25; beep(330, .08); updateUI();
 }
 function craft() {
   if (inv.madera < 1 || inv.piedra < 1) { toast('Para un cubo necesitás 1 madera y 1 piedra.', 2600); beep(120, .12); return; }
@@ -890,12 +901,18 @@ ITEMS.forEach((it, i) => {
   const c = tileCanvas(it.tile);
   b.appendChild(c); b.appendChild(document.createElement('b'));
   const num = document.createElement('i'); num.textContent = i + 1; b.appendChild(num);
-  b.addEventListener('click', () => { sel = i; setMode('place'); updateUI(); toast(it.name + ' — tocá un bloque para ponerlo', 1500); });
+  b.addEventListener('click', () => {
+    if (it.vars && sel === i && mode === 'place') { // cambiar de tipo de pista
+      it.v = (it.v + 1) % it.vars.length; [it.block, it.tile, it.name] = it.vars[it.v];
+      const g = c.getContext('2d'); g.clearRect(0, 0, 16, 16); g.drawImage(tileCanvas(it.tile), 0, 0);
+    }
+    sel = i; setMode('place'); updateUI(); toast(it.name + (it.inf ? ' (infinita ∞)' : '') + ' — tocá un bloque para ponerlo' + (it.vars ? '. Tocá el casillero otra vez para cambiar.' : ''), 1800);
+  });
   hot.appendChild(b);
 });
 function setMode(m) { mode = m; const b = $('modeBtn'); b.textContent = m === 'break' ? 'Romper' : 'Poner'; b.classList.toggle('place', m === 'place'); }
 function updateUI() {
-  [...hot.children].forEach((b, i) => { const n = inv[ITEMS[i].id]; b.querySelector('b').textContent = n || ''; b.classList.toggle('sel', i === sel && mode === 'place'); b.classList.toggle('empty', !n); });
+  [...hot.children].forEach((b, i) => { const n = ITEMS[i].inf ? '∞' : inv[ITEMS[i].id]; b.querySelector('b').textContent = n || ''; b.classList.toggle('sel', i === sel && mode === 'place'); b.classList.toggle('empty', !n); });
   $('cubeCount').textContent = cubes; $('gemCount').textContent = gems; $('dexCount').textContent = MONS.filter(m => dex[m.id]).length + '/' + MONS.length;
 }
 $('modeBtn').addEventListener('click', () => { setMode(mode === 'break' ? 'place' : 'break'); updateUI(); beep(400, .05); });
@@ -961,8 +978,21 @@ $('allOut').addEventListener('click', () => { party = [...MONS].sort((a, b) => a
 $('allIn').addEventListener('click', () => { party = []; rebuildFollowers(); save(); beep(300, .1); renderDex(); });
 $('bookBtn').addEventListener('click', () => { if (!running || newOpen) return; running = false; resetArm = false; $('resetBtn').textContent = 'Mundo nuevo'; renderDex(); $('dexOv').hidden = false; });
 $('dexClose').addEventListener('click', () => { $('dexOv').hidden = true; running = true; last = performance.now(); });
+// mudarse a una isla grande nueva llevando todo (Pokédex, Pokémon, cosas, amigos); las construcciones no viajan
+function moveToBigIsland() {
+  save();
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE)) || {};
+    Object.assign(s, { seed: (Math.random() * 1e9) | 0, wx: BIG, edits: {}, p: null, veh: null, track: 1 });
+    localStorage.setItem(SAVE, JSON.stringify(s));
+  } catch (e) { }
+  location.reload();
+}
+$('moveBig').addEventListener('click', moveToBigIsland);
+if (WX < BIG) $('bigTip').hidden = false;
 $('resetBtn').addEventListener('click', () => {
   if (!resetArm) { resetArm = true; $('resetBtn').textContent = '¿Seguro? Tocá otra vez'; return; }
+  if (WX < BIG) { try { localStorage.setItem(SAVE, JSON.stringify({ seed: (Math.random() * 1e9) | 0, wx: BIG, track: 1, cubes: 5, inv: { madera: 2, piedra: 2 } })); } catch (e) { } location.reload(); return; }
   exitVehicle(); wild.splice(0).forEach(removeCreature); newWorld(); buildAll(); spawnTown(); placeVehicles(null); rebuildFollowers(); updateUI(); save();
   $('dexOv').hidden = true; running = true; last = performance.now(); toast('¡Isla nueva! Buscá Pokémon en el pasto alto.', 3000);
 });
@@ -1015,7 +1045,7 @@ addEventListener('keydown', e => {
   else if (e.code === 'KeyV') { if (riding) exitVehicle(); else { const v = vehicles.find(v => v.body.p.distanceTo(player.body.p) < 4.5); if (v) enterVehicle(v); else toast('No hay ningún vehículo cerca.'); } }
   else if (e.code === 'KeyF') attack();
   else if (e.code === 'KeyL' || e.code === 'KeyP') $('bookBtn').click();
-  else if (/^Digit[1-7]$/.test(e.code)) { sel = +e.code.slice(5) - 1; setMode('place'); updateUI(); toast(ITEMS[sel].name, 900); }
+  else if (/^Digit[1-8]$/.test(e.code)) { sel = +e.code.slice(5) - 1; setMode('place'); updateUI(); toast(ITEMS[sel].name, 900); }
   if (e.code.startsWith('Arrow')) e.preventDefault();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
@@ -1085,7 +1115,7 @@ function frame(now) {
     for (let i = wild.length - 1; i >= 0; i--) { const c = wild[i]; if (!c.alive) { wild.splice(i, 1); continue; } updateWild(c, dt, now); if (c.alive && c.state !== 'caught' && c.body.p.distanceTo(player.body.p) > 42) { removeCreature(c); wild.splice(i, 1); } }
     if (atkCD > 0) atkCD -= dt;
     if ((atkUiT -= dt) <= 0) { atkUiT = .25; const show = followers.length > 0 && (!!attackTarget() || (ADV && !!nearestZombie(player.body.p, 12))); if ($('atkBtn').hidden === show) $('atkBtn').hidden = !show; }
-    spawnT -= dt; if (spawnT <= 0) { spawnT = 1.2; if (wild.filter(c => c.alive).length < 12) spawnWild(); }
+    spawnT -= dt; if (spawnT <= 0) { spawnT = 1.2; if (wild.filter(c => c.alive).length < Math.round(12 * WX / 64)) spawnWild(); }
     if (ADV) updateAdv(dt);
     updateCatch(dt);
     updateParticles(dt);
@@ -1103,7 +1133,7 @@ function frame(now) {
 let ADV = false;
 const DAYLEN = 420; // segundos por día completo: unos 4 y medio de día y 2 y medio de noche
 let tday = .3; // 0 = amanecer · .68 = anochecer
-const adv = { hp: 10, huesos: 0, flechas: 0, espada: false, arco: false, arma: 'mano', lobos: 0 };
+const adv = { hp: 10, huesos: 0, flechas: 0, espada: false, arco: false, arma: 'mano', lobos: 0, pups: [], pupGift: false };
 const mobs = [], arrows = [];
 let hurtT = 0, sinceHurt = 99, regenT = 0, zSpawnT = 0, wSpawnT = 0, wasNight = false, faintOpen = false;
 
@@ -1414,6 +1444,54 @@ function updateAdv(dt) {
   updateArrows(dt);
 }
 
+/* ================= Paw Patrol: cachorros que con un hueso son tus amigos ================= */
+const PUPS = [
+  { id: 'chase', name: 'Chase', fur: '#8a5a32', fur2: '#e8c89a', gear: '#1f4fb4', ears: 'up', say: '¡Chase está en camino!' },
+  { id: 'marshall', name: 'Marshall', fur: '#f4f4f4', fur2: '#ffffff', gear: '#d8312a', ears: 'flop', spots: true, say: '¡Estoy encendido y listo!' },
+  { id: 'skye', name: 'Skye', fur: '#d8b48a', fur2: '#f2e0c0', gear: '#ff7ab8', ears: 'flop', say: '¡Este cachorro va a volar!' },
+  { id: 'rubble', name: 'Rubble', fur: '#c9a070', fur2: '#f2e6d0', gear: '#ffc61a', ears: 'small', say: '¡Rubble al rescate!' },
+  { id: 'rocky', name: 'Rocky', fur: '#9a9a9a', fur2: '#e8e8e8', gear: '#3faa3f', ears: 'up', say: '¡No lo tires, reciclalo!' },
+  { id: 'zuma', name: 'Zuma', fur: '#5a3a1e', fur2: '#7a5030', gear: '#f28a1a', ears: 'flop', say: '¡Vamos a zambullirnos!' },
+  { id: 'everest', name: 'Everest', fur: '#a8b0b8', fur2: '#ffffff', gear: '#2ab8a8', ears: 'up', say: '¡Hielo o nieve, estoy lista!' },
+  { id: 'tracker', name: 'Tracker', fur: '#c8a878', fur2: '#f0e0c0', gear: '#7a8a3a', ears: 'big', say: '¡Soy todo oídos!' },
+  { id: 'rex', name: 'Rex', fur: '#e8d8b8', fur2: '#8a6a4a', gear: '#5ab84a', ears: 'flop', say: '¡Hora de los dinosaurios!' },
+  { id: 'liberty', name: 'Liberty', fur: '#8a5a30', fur2: '#c08a5a', gear: '#b84ad8', ears: 'long', say: '¡Liberty lista para la ciudad!' },
+  { id: 'ella', name: 'Ella', fur: '#f2e2c8', fur2: '#ffffff', gear: '#e8b830', ears: 'flop', say: '¡Gemelas poderosas en acción!' },
+  { id: 'tuck', name: 'Tuck', fur: '#c8a070', fur2: '#f2e6d0', gear: '#e8b830', ears: 'flop', say: '¡Listo para el rescate!' }
+];
+const PUP = Object.fromEntries(PUPS.map(p => [p.id, p]));
+function nameTag(text, col) {
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 32; const g = cv.getContext('2d');
+  g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 2, 128, 28); g.fillStyle = col; g.fillRect(0, 2, 6, 28);
+  g.font = 'bold 20px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText(text, 66, 17);
+  const tex = new THREE.CanvasTexture(cv); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sp.scale.set(1, .25, 1); return sp;
+}
+function makePup(d) {
+  const g = new THREE.Group(), r = {};
+  bx(g, .38, .34, .62, d.fur, 0, .44, 0); bx(g, .3, .2, .5, d.fur2, 0, .34, .02);
+  bx(g, .42, .3, .44, d.gear, 0, .56, -.02); bx(g, .26, .2, .22, '#8a8a8a', 0, .74, -.08); // chaleco y mochila
+  r.head = new THREE.Group(); r.head.position.set(0, .78, .34); g.add(r.head);
+  bx(r.head, .44, .4, .38, d.fur, 0, .02, 0); bx(r.head, .24, .16, .18, d.fur2, 0, -.08, .24); bx(r.head, .1, .07, .05, '#1a1a1a', 0, -.03, .34);
+  [-1, 1].forEach(k => { bx(r.head, .09, .1, .02, '#1a1a1a', k * .11, .06, .195); bx(r.head, .03, .03, .01, '#ffffff', k * .11 - .02, .09, .206); });
+  const e = d.ears;
+  [-1, 1].forEach(k => {
+    if (e === 'up') bx(r.head, .1, .18, .08, d.fur, k * .15, .3, -.04);
+    else if (e === 'big') bx(r.head, .2, .26, .06, d.fur, k * .26, .24, -.02);
+    else if (e === 'small') bx(r.head, .1, .08, .1, d.fur2 === '#f2e6d0' ? '#a87a50' : d.fur, k * .2, .2, -.02);
+    else bx(r.head, .08, e === 'long' ? .36 : .26, .14, d.fur === '#f4f4f4' ? '#2a2a2a' : d.fur2 === '#ffffff' ? d.fur : d.fur2, k * .25, e === 'long' ? -.04 : .02, -.02);
+  });
+  bx(r.head, .48, .12, .42, d.gear, 0, .25, -.01); bx(r.head, .34, .08, .3, d.gear, 0, .33, -.01); // casco
+  bx(r.head, .12, .12, .02, '#ffd23f', 0, .25, .215, { emissive: '#806000' }); // placa
+  bx(g, .16, .16, .04, '#ffd23f', 0, .58, .21, { emissive: '#806000' }); // placa en el collar
+  if (d.spots) [[.12, .5, .2], [-.14, .46, -.1], [.1, .42, -.25]].forEach(([x, y, z]) => bx(g, .08, .08, .02, '#1a1a1a', x + (x > 0 ? .1 : -.1), y, z));
+  r.legs = [[-.12, .2], [.12, .2], [-.12, -.2], [.12, -.2]].map(([x, z]) => { const l = new THREE.Group(); l.position.set(x, .3, z); g.add(l); bx(l, .1, .3, .1, d.fur, 0, -.15, 0); return l; });
+  r.legL = r.legs[0]; r.legR = r.legs[1];
+  r.tail = new THREE.Group(); r.tail.position.set(0, .56, -.32); g.add(r.tail); bx(r.tail, .08, .08, .26, d.fur, 0, 0, -.1); r.tail.rotation.x = .7;
+  const tag = nameTag(d.name, d.gear); tag.position.set(0, 1.4, 0); g.add(tag);
+  g.userData.rig = r; return g;
+}
+
 /* ================= pueblo: aldeanos, gallinas y el golem gigante ================= */
 const town = [];
 function makeVillager(k) {
@@ -1450,10 +1528,11 @@ function makeGolem() {
   g.userData.rig = r; return g;
 }
 function makeNpc(kind, x, y, z, k) {
-  const n = { kind, k, model: kind === 'aldeano' ? makeVillager(k) : kind === 'gallina' ? makeChicken() : makeGolem(),
-    body: newBody(kind === 'golem' ? .6 : kind === 'gallina' ? .2 : .3, kind === 'golem' ? 2.8 : kind === 'gallina' ? .6 : 1.9),
+  const n = { kind, k, model: kind === 'aldeano' ? makeVillager(k) : kind === 'gallina' ? makeChicken() : kind === 'pup' ? makePup(PUP[k]) : makeGolem(),
+    body: newBody(kind === 'golem' ? .6 : kind === 'gallina' || kind === 'pup' ? .25 : .3, kind === 'golem' ? 2.8 : kind === 'gallina' ? .6 : kind === 'pup' ? .95 : 1.9),
     yaw: Math.random() * 6, t: 0, dir: new THREE.Vector3(), phase: 0, atkT: 0, gift: 0, home: k };
-  n.body.p.set(x, y, z); n.body.jumpV = kind === 'golem' ? 9 : 7.5;
+  n.body.p.set(x, y, z); n.body.jumpV = kind === 'golem' ? 9 : 7.5; n.base = new THREE.Vector3(x, y, z);
+  if (kind === 'pup') { n.pup = PUP[k]; n.tamed = adv.pups.includes(k); }
   n.model.traverse(o => { o.userData.npc = n; }); scene.add(n.model); n.shadow = makeShadow(kind === 'golem' ? 1.8 : kind === 'gallina' ? .5 : .9);
   town.push(n); return n;
 }
@@ -1465,6 +1544,15 @@ function spawnTown() {
   for (let i = 0; i < 5; i++) makeNpc('gallina', v.x + rr() * 1.4, v.y + .1, v.z + (Math.random() - .5) * 6, i);
   const p = adv.golem ? player.body.p : v;
   makeNpc('golem', p.x + 2, (surfaceY(p.x + 2, p.z + 2) || v.y) + .1, p.z + 2, 0);
+  spawnPups();
+}
+function spawnPups() {
+  PUPS.forEach((d, i) => {
+    let x, z, y = null;
+    if (adv.pups.includes(d.id)) { const a = i * .9, pp = player.body.p; x = pp.x + Math.cos(a) * 4; z = pp.z + Math.sin(a) * 4; y = surfaceY(x, z); }
+    for (let t = 0; t < 40 && !y; t++) { const a = Math.random() * 6.28, r = 6 + Math.random() * WX * .3; x = WX / 2 + Math.cos(a) * r; z = WZ / 2 + Math.sin(a) * r; const sy = surfaceY(x, z); if (sy && sy > SEA + 1) y = sy; }
+    makeNpc('pup', x, (y || SEA + 3) + .1, z, d.id);
+  });
 }
 const golem = () => town.find(n => n.kind === 'golem');
 function npcWalk(n, tx, tz, speed, dt) {
@@ -1475,7 +1563,7 @@ function npcWander(n, cx, cz, rad, speed, dt) {
   if (n.t <= 0) { n.t = 2 + Math.random() * 3; if (Math.random() < .35) n.dir.set(0, 0, 0); else { const a = Math.random() * 6.28; n.dir.set(Math.cos(a), 0, Math.sin(a)); } if (Math.hypot(n.body.p.x - cx, n.body.p.z - cz) > rad) n.dir.set(cx - n.body.p.x, 0, cz - n.body.p.z).normalize(); }
   if (n.dir.x || n.dir.z) npcWalk(n, n.body.p.x + n.dir.x, n.body.p.z + n.dir.z, speed, dt); else { n.body.v.x *= .8; n.body.v.z *= .8; }
 }
-const PHRASES = ['¡Hola, explorador!', '¡Qué lindos tus Pokémon!', 'Hmmm… hmm.', '¡Cuidado con los zombies de noche!', '¿Viste el cohete? ¡Vuela altísimo!', 'Las gallinas se escaparon otra vez…', 'El golem nos cuida. ¡Es muy fuerte!'];
+const PHRASES = ['¡Los cachorros de la Patrulla Canina andan por la isla!', '¡Hola, explorador!', '¡Qué lindos tus Pokémon!', 'Hmmm… hmm.', '¡Cuidado con los zombies de noche!', '¿Viste el cohete? ¡Vuela altísimo!', 'Las gallinas se escaparon otra vez…', 'El golem nos cuida. ¡Es muy fuerte!'];
 function updateNpc(n, dt) {
   const b = n.body, p = player.body.p, d = Math.hypot(p.x - b.p.x, p.z - b.p.z);
   if (collides(b, b.p.x, b.p.y, b.p.z)) b.p.y = Math.floor(b.p.y) + 1;
@@ -1493,6 +1581,21 @@ function updateNpc(n, dt) {
   } else if (n.kind === 'gallina') {
     if (village) npcWander(n, village.x, village.z, 10, .9, dt);
     if (b.ground && (n.dir.x || n.dir.z) && Math.random() < dt * .6) b.v.y = 3;
+  } else if (n.kind === 'pup') {
+    if (n.tamed) {
+      const z = ADV && nearestZombie(p, 14);
+      if (z) { npcWalk(n, z.body.p.x, z.body.p.z, 5.6, dt); if (z.body.p.distanceTo(b.p) < 1.6 && n.atkT <= 0) { n.atkT = .8; hurtMob(z, 3, b.p); b.v.y = 4; beep(500, .05, 'square', .04); } }
+      else {
+        if (d > 26 || p.y - b.p.y > 8) { const a = Math.random() * 6.28, tx = p.x + Math.cos(a) * 4, tz = p.z + Math.sin(a) * 4; b.p.set(tx, (surfaceY(tx, tz) || p.y) + .2, tz); b.v.set(0, 0, 0); }
+        n.roamT = (n.roamT || 0) - dt;
+        if (!n.roam || n.roamT <= 0) { const a = Math.random() * 6.28, r = 3 + Math.random() * 4; n.roam = { x: Math.cos(a) * r, z: Math.sin(a) * r }; n.roamT = 3 + Math.random() * 4; }
+        const gx = p.x + n.roam.x, gz = p.z + n.roam.z, gd = Math.hypot(gx - b.p.x, gz - b.p.z);
+        if (surfaceY(gx, gz) === null) n.roamT = 0;
+        if (gd > .8) npcWalk(n, gx, gz, d > 9 ? Math.min(7, 2 + d * .5) : Math.min(2.4, 1 + gd * .6), dt);
+        else { b.v.x *= .8; b.v.z *= .8; if (Math.random() < dt) n.tyaw = Math.atan2(p.x - b.p.x, p.z - b.p.z); }
+      }
+    } else npcWander(n, n.base.x, n.base.z, 9, 1.3, dt);
+    if (b.ground && Math.random() < dt * .15) b.v.y = 3.5; // saltitos de contento
   } else { // golem
     const guard = adv.golem, z = ADV && nearestZombie(guard ? p : b.p, guard ? 16 : 12);
     if (z) {
@@ -1515,18 +1618,31 @@ function updateNpc(n, dt) {
   const sw = Math.sin(n.phase) * Math.min(1, sp / 1.5) * .6;
   r.legL.rotation.x = sw; r.legR.rotation.x = -sw;
   if (n.kind === 'golem') { n.swing = Math.max(0, (n.swing || 0) - dt); const up = n.swing > 0 ? -2.2 * Math.sin(n.swing / .5 * Math.PI) : 0; r.armL.rotation.x = -sw * .6 + up; r.armR.rotation.x = sw * .6 + up; }
+  if (n.kind === 'pup') { r.legs[2].rotation.x = -sw; r.legs[3].rotation.x = sw; r.tail.rotation.y = Math.sin(performance.now() * (n.tamed ? .02 : .008) + n.phase) * .6; }
   if (n.kind === 'gallina') { const f = !b.ground ? Math.sin(performance.now() * .04) * .8 : 0; r.wingL.rotation.z = f; r.wingR.rotation.z = -f; r.head.rotation.x = sp < .2 && Math.sin(performance.now() * .003 + n.k) > .7 ? .6 : 0; }
   placeShadow(n.shadow, b.p, n.kind === 'golem' ? 1.8 : n.kind === 'gallina' ? .5 : .9);
 }
+const pupFriends = () => town.filter(n => n.kind === 'pup' && n.tamed);
 function tapNpc(n) {
   const d = n.body.p.distanceTo(player.body.p);
   if (n.kind === 'gallina') { n.body.v.y = 4.5; n.dir.set(Math.random() - .5, 0, Math.random() - .5).normalize(); n.t = 1.5; beep(1100, .05, 'square', .04); setTimeout(() => beep(900, .07, 'square', .04), 70); toast('¡Cocorocó! 🐔', 1000); return; }
   if (d > 7) { toast('Acercate más.'); return; }
+  if (n.kind === 'pup') {
+    const pd = n.pup;
+    if (n.tamed) { hearts(n.body.p); n.body.v.y = 5; toast(pd.name + ': "' + pd.say + '"', 2200); beep(880, .06, 'sine'); setTimeout(() => beep(1175, .08, 'sine'), 70); return; }
+    if (adv.huesos < 1) { toast('Necesitás un hueso 🦴 para que ' + pd.name + ' sea tu amigo. Los aldeanos regalan huesos' + (ADV ? ' y los zombies los sueltan.' : '.'), 3200); beep(200, .1); return; }
+    adv.huesos--; n.tamed = true; if (!adv.pups.includes(pd.id)) adv.pups.push(pd.id);
+    hearts(n.body.p); hearts(n.body.p); n.body.v.y = 6; player.throwT = .3;
+    toast('¡' + pd.name + ' es tu amigo! "' + pd.say + '"', 3200); [660, 880, 1100, 1320].forEach((f, i) => setTimeout(() => beep(f, .09, 'sine'), i * 80));
+    if (PUPS.every(q => adv.pups.includes(q.id))) setTimeout(() => toast('¡Tenés a toda la Patrulla Canina! 🐾', 3500), 3300);
+    updateAdvUI(); saveSoon(); return;
+  }
   if (n.kind === 'aldeano') {
     hearts(n.body.p.clone().add(new THREE.Vector3(0, 1, 0))); beep(330, .08, 'triangle'); setTimeout(() => beep(260, .1, 'triangle'), 90);
     if (performance.now() - n.gift > 90000) {
       n.gift = performance.now(); const q = Math.random();
-      if (q < .5) { cubes += 2; toast('Aldeano: "¡Hola! Tomá, 2 cubos atrapadores."', 2600); }
+      if (q < .3) { adv.huesos += 3; toast('Aldeano: "Tomá 3 huesos 🦴 para los cachorros."', 2600); }
+      else if (q < .55) { cubes += 2; toast('Aldeano: "¡Hola! Tomá, 2 cubos atrapadores."', 2600); }
       else if (q < .75) { inv.madera += 3; inv.piedra += 3; toast('Aldeano: "Tomá madera y piedra para construir."', 2600); }
       else if (q < .9 && ADV) { adv.flechas += 6; toast('Aldeano: "Para la noche: 6 flechas."', 2600); }
       else { gems++; toast('Aldeano: "¡Encontré esta gema 💎! Te la regalo."', 2600); }
@@ -1752,6 +1868,7 @@ function start(aventura) {
   goFull();
   $('title').hidden = true; running = true; last = performance.now(); checkTurn();
   setAdv(aventura, true);
+  if (!adv.pupGift) { adv.pupGift = true; adv.huesos += 3; updateAdvUI(); setTimeout(() => toast('¡Llegó la Patrulla Canina a la isla! 🐾 Tenés 3 huesos 🦴: dale uno a un cachorro para que sea tu amigo.', 5000), 4000); }
   if (IOS && !STANDALONE) setTimeout(() => toast('Para jugar en pantalla completa en iPhone: Compartir ⬆️ → "Agregar a inicio"', 5000), 4200);
   toast(aventura ? (isNight() ? 'Modo Aventura: ¡es de noche! Cuidado con los zombies 🧟' : 'Modo Aventura: hacé una espada en "Hacer" antes de que llegue la noche') : Object.keys(dex).length ? '¡Bienvenido de vuelta!' : 'Buscá Pokémon en el pasto alto y tocalos para atraparlos', 3800);
   save();
